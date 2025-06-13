@@ -3,9 +3,28 @@ const catchAsync = require("../../../utils/catchAsync");
 const AppError = require("../../../utils/AppError");
 const Astrologer = require("../../../models/asteroLogerSchema");
 const deleteOldFiles = require("../../../utils/deleteOldFiles");
+const generateReferralCode = require("../../../utils/generateReferralCode");
 
 exports.updateProfile = catchAsync(async (req, res, next) => {
-  const { name, email, mobile, about, language, experience, commission, pricing, services, bankName, ifscCode, accountNumber, gstNumber, state, city, address, documentImage } = req.body;
+  const {
+    name,
+    email,
+    mobile,
+    about,
+    language,
+    experience,
+    commission,
+    pricing,
+    services,
+    bankName,
+    ifscCode,
+    accountNumber,
+    gstNumber,
+    state,
+    city,
+    address,
+    documentImage,
+  } = req.body;
   const obj = {};
   const id = req.user._id;
 
@@ -13,15 +32,26 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     return next(new AppError("Invalid id", 400));
   }
 
+  const astrologer = await Astrologer.findById(id);
+  if (!astrologer) {
+    return next(new AppError("Astrologer not found", 404));
+  }
+
   if (email) {
-    const astrologer = await Astrologer.findOne({ email: email, _id: { $ne: id } });
+    const astrologer = await Astrologer.findOne({
+      email: email,
+      _id: { $ne: id },
+    });
     if (astrologer) {
       return next(new AppError("Email already exists", 400));
     }
   }
 
   if (mobile) {
-    const astrologer = await Astrologer.findOne({ mobile: mobile, _id: { $ne: id } });
+    const astrologer = await Astrologer.findOne({
+      mobile: mobile,
+      _id: { $ne: id },
+    });
     if (astrologer) {
       return next(new AppError("Mobile number already exists", 400));
     }
@@ -60,6 +90,10 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
           console.error("Failed to delete old profile image:", err);
         });
       }
+    }
+
+    if (!astrologer.referralCode) {
+      obj.referralCode = generateReferralCode(name);
     }
 
     const astrologer = await Astrologer.findByIdAndUpdate(id, obj, {

@@ -18,11 +18,8 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(cors());
 app.use(morgan("dev"));
 
-
-
 //cookie parser middleware
 app.use(cookieParser());
-
 
 // testing middleware
 app.use("/", async (req, res, next) => {
@@ -44,4 +41,3 @@ app.all("*", (req, res, next) => {
 app.use(globalErrorHandler);
 
 module.exports = app;
-

@@ -4,7 +4,7 @@ const catchAsync = require("../../../utils/catchAsync");
 const createToken = require("../../../utils/createToken");
 
 exports.otpVerify = catchAsync(async (req, res, next) => {
-  const { otp, mobile, email } = req.body;
+  const { otp, mobile, email, fcmToken } = req.body;
 
   // if (!mobile) return next(new AppError("Mobile is required", 400));
 
@@ -17,7 +17,7 @@ exports.otpVerify = catchAsync(async (req, res, next) => {
   if (!otp) return next(new AppError("OTP is required", 400));
 
   let user;
-  
+
   if (mobile) {
     user = await User.findOne({
       mobile,
@@ -42,6 +42,9 @@ exports.otpVerify = catchAsync(async (req, res, next) => {
 
   user.otp = undefined;
   user.otpExpiry = undefined;
+  if (fcmToken) {
+    user.fcmToken = fcmToken;
+  }
   await user.save();
 
   createToken(user, 200, res, true);

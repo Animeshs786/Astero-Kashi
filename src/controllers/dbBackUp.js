@@ -10,11 +10,11 @@ const { MongoClient } = require("mongodb");
 const sourceUri =
   "mongodb+srv://DRM:yq2K5yl2ST6564no@cluster0.gnnticj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 const targetUri =
-  "mongodb+srv://rakamsingh1711:0jH26v92pTCyGQct@cluster0.p5das.mongodb.net/fast1";
+  "mongodb+srv://teknikodatabase:hvbZS08mWShzxjo3@med-exam.e3j6uab.mongodb.net/iptv";
 
 // Database names
 const sourceDbName = "test";
-const targetDbName = "fast1";
+const targetDbName = "iptv";
 
 async function copyDatabase() {
   const sourceClient = new MongoClient(sourceUri);

@@ -20,6 +20,7 @@ const {
   generateTransactionInvoice,
 } = require("./src/controllers/invoice/invoice");
 const { RtcTokenBuilder, RtcRole } = require("agora-access-token");
+const { chatNotificaion } = require("./src/controllers/firebaseNotification/chatNotification");
 
 dotenv.config({ path: "config.env" });
 
@@ -84,17 +85,26 @@ const generateAgoraToken = (channelName, uid, role = RtcRole.PUBLISHER) => {
   );
 };
 
-// Initiate Knowlarity Voice Call
-const initiateKnowlarityCall = async (userNumber, astrologerNumber) => {
+const initiateKnowlarityCall = async (
+  userNumber,
+  astrologerNumber,
+  userWalletBalance,
+  astrologerRatePerMinute
+) => {
   try {
+    const maxDuration =
+      Math.floor(userWalletBalance / astrologerRatePerMinute) * 60; // Convert to seconds
     const response = await axios.post(
       "https://kpi.knowlarity.com/Basic/v1/account/call/makecall",
       {
         k_number: KNOWLARITY_CALLER_ID,
-        agent_number: astrologerNumber,
-        customer_number: userNumber,
+        agent_number: "+91" + astrologerNumber,
+        customer_number: "+91" + userNumber,
         caller_id: KNOWLARITY_CALLER_ID,
-        additional_params: { timeout: "5" },
+        additional_params: {
+          timeout: maxDuration,
+          callback_url: "https://astrokashi.in/call-status-webhook",
+        },
       },
       {
         headers: {
@@ -104,7 +114,11 @@ const initiateKnowlarityCall = async (userNumber, astrologerNumber) => {
         },
       }
     );
+
     console.log("Knowlarity call initiated:", response.data);
+
+    console.log("max duration call", maxDuration);
+
     return response.data;
   } catch (error) {
     console.error(
@@ -394,6 +408,7 @@ io.on("connection", (socket) => {
                 chatSessionId: chatSession._id,
                 astrologerId,
                 astrologerName: astrologer.name,
+                profileImage: astrologer.profileImage,
               }
             );
           }
@@ -401,6 +416,7 @@ io.on("connection", (socket) => {
             chatSessionId: chatSession._id,
             userId: chatRequest.user._id,
             userName: chatRequest.user.name,
+            profileImage: chatRequest.user.profileImage,
           });
 
           io.emit("astrologerStatus", {
@@ -431,6 +447,72 @@ io.on("connection", (socket) => {
     }
   );
 
+//   socket.on(
+//   "sendMessage",
+//   async ({ chatSessionId, senderId, senderType, messageText }) => {
+//     try {
+//       const chatSession = await ChatSession.findById(chatSessionId).populate(
+//         "user astrologer"
+//       );
+//       if (!chatSession || chatSession.status !== "active") {
+//         throw new AppError("Invalid or inactive chat session", 400);
+//       }
+
+//       const recipientId =
+//         senderType === "User"
+//           ? chatSession.astrologer._id
+//           : chatSession.user._id;
+//       const recipientType = senderType === "User" ? "Astrologer" : "User";
+
+//       const messageData = await sendMessage(
+//         senderId,
+//         recipientId,
+//         messageText,
+//         senderType,
+//         recipientType,
+//         chatSessionId
+//       );
+
+//       const recipientSocket =
+//         recipientType === "User"
+//           ? users[recipientId]?.socketId
+//           : astrologers[recipientId]?.socketId;
+
+//       if (recipientSocket) {
+//         io.to(recipientSocket).emit("newMessage", messageData);
+//       } else {
+//         // Recipient is offline, send push notification
+//         const recipientModel = recipientType === "User" ? User : Astrologer;
+//         const recipient = await recipientModel.findById(recipientId);
+//         const sender = await (senderType === "User" ? User : Astrologer).findById(senderId);
+        
+//         if (recipient && recipient.fcmToken) {
+//           await chatNotificaion(
+//             recipient.fcmToken,
+//             `New Message from ${sender.name || "Unknown"}`,
+//             messageText,
+//             {
+//               chatSessionId: chatSessionId.toString(),
+//               senderId: senderId.toString(),
+//               senderType,
+//               recipientId: recipientId.toString(),
+//               recipientType,
+//               senderProfileImage: sender.profileImage || "", // Include sender's profile image
+//               recipientProfileImage: recipient.profileImage || "", // Include recipient's profile image
+//             }
+//           );
+//         }
+//       }
+
+//       socket.emit("messageSent", messageData);
+//     } catch (error) {
+//       socket.emit("messageError", {
+//         message: `Failed to send message: ${error.message}`,
+//       });
+//     }
+//   }
+// );
+
   socket.on(
     "sendMessage",
     async ({ chatSessionId, senderId, senderType, messageText }) => {
@@ -447,6 +529,11 @@ io.on("connection", (socket) => {
             ? chatSession.astrologer._id
             : chatSession.user._id;
         const recipientType = senderType === "User" ? "Astrologer" : "User";
+
+        console.log(
+          "senderTypeJ+++++++++++++++++++++++++++++++++++++++ thi",
+          senderType
+        );
 
         const messageData = await sendMessage(
           senderId,
@@ -785,6 +872,7 @@ io.on("connection", (socket) => {
             channelName,
             astrologerUid
           );
+          console.log(userToken, astrologerToken, "sljflsfjlsdfjsssssssss");
 
           const timer = setInterval(async () => {
             try {
@@ -1088,7 +1176,7 @@ io.on("connection", (socket) => {
       if (!user) {
         throw new AppError("User not found", 404);
       }
-
+     console.log(user.wallet.balance,astrologer.pricing.voice,"++++++++++++++++++++++++++++++++++++++++++++")
       const voicePrice = astrologer.pricing.voice;
       if (user.wallet.balance < voicePrice) {
         throw new AppError(
@@ -1187,7 +1275,12 @@ io.on("connection", (socket) => {
           });
 
           // Initiate Knowlarity voice call
-          await initiateKnowlarityCall(user.mobile, astrologer.mobile);
+          const knowlarityRes = await initiateKnowlarityCall(
+            user.mobile,
+            astrologer.mobile,
+            user.wallet.balance + voicePrice,
+            voicePrice
+          );
 
           const timer = setInterval(async () => {
             try {

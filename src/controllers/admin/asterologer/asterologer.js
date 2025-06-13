@@ -2,46 +2,56 @@ const Astrologer = require("../../../models/asteroLogerSchema");
 const AppError = require("../../../utils/AppError");
 const catchAsync = require("../../../utils/catchAsync");
 const deleteOldFiles = require("../../../utils/deleteOldFiles");
+const generateReferralCode = require("../../../utils/generateReferralCode");
 const pagination = require("../../../utils/pagination");
 
 exports.createAstrologer = catchAsync(async (req, res, next) => {
   const {
     name,
     email,
+    pincode,
+    city,
     mobile,
-    status = "offline",
+    otherPlatformWork,
+    qualification,
+    status,
+    isBusy,
     about,
     language,
-    experience = 0,
+    experience,
     speciality,
     commission,
     pricing,
     services,
-    isBlock = false,
+    isBlock,
+    fcmToken,
     bankName,
     ifscCode,
     accountNumber,
     gstNumber,
     state,
-    city,
     address,
-    isVerify = false,
+    isExpert,
+    isVerify,
+    referralCommission,
+    poojaCommission,
   } = req.body;
-  let profileImagePath;
-  let documentImagePaths = [];
 
   console.log(req.body, "body");
 
-  if (!name || !email || !mobile) {
-    return next(new AppError("Name, email, and mobile are required", 400));
+  // Validate required fields
+  if (!mobile) {
+    return next(new AppError("Mobile number is required", 400));
   }
 
   // Check for duplicate email
-  const existingEmail = await Astrologer.findOne({
-    email: { $regex: `^${email}$`, $options: "i" },
-  });
-  if (existingEmail) {
-    return next(new AppError("Email must be unique", 400));
+  if (email) {
+    const existingEmail = await Astrologer.findOne({
+      email: { $regex: `^${email}$`, $options: "i" },
+    });
+    if (existingEmail) {
+      return next(new AppError("Email must be unique", 400));
+    }
   }
 
   // Check for duplicate mobile
@@ -53,43 +63,72 @@ exports.createAstrologer = catchAsync(async (req, res, next) => {
   const astrologerData = {
     name,
     email,
+    pincode: pincode ? Number(pincode) : undefined,
+    city,
     mobile,
-    status,
+    otherPlatformWork:
+      otherPlatformWork !== undefined ? Boolean(otherPlatformWork) : undefined,
+    qualification,
+    status: status || "offline",
+    isBusy: isBusy !== undefined ? Boolean(isBusy) : undefined,
     about,
     language: language ? JSON.parse(language) : [],
-    experience,
+    experience: experience !== undefined ? Number(experience) : 0,
     speciality: speciality ? JSON.parse(speciality) : [],
-    commission,
+    commission: commission !== undefined ? Number(commission) : 0,
     pricing: pricing ? JSON.parse(pricing) : { chat: 10, voice: 15, video: 20 },
     services: services
       ? JSON.parse(services)
       : { chat: true, voice: true, video: true },
-    isBlock,
+    isBlock: isBlock !== undefined ? Boolean(isBlock) : false,
+    fcmToken,
     bankName,
     ifscCode,
     accountNumber,
     gstNumber,
     state,
-    city,
     address,
-    isVerify,
+    isExpert: isExpert !== undefined ? Boolean(isExpert) : false,
+    isVerify: isVerify !== undefined ? Boolean(isVerify) : false,
+    referralCommission:
+      referralCommission !== undefined ? Number(referralCommission) : 0,
+    poojaCommission:
+      poojaCommission !== undefined ? Number(poojaCommission) : 0,
   };
 
-  try {
-    // Handle profile image
-    if (req.files && req.files.profileImage) {
-      const profileImage = req.files.profileImage[0];
-      const imageUrl = `${profileImage.destination}/${profileImage.filename}`;
-      astrologerData.profileImage = imageUrl;
-      profileImagePath = imageUrl;
-    }
+  let imagePaths = {};
 
-    // Handle document images
-    if (req.files && req.files.documentImage) {
-      astrologerData.documentImage = req.files.documentImage.map(
-        (file) => `${file.destination}/${file.filename}`
-      );
-      documentImagePaths = astrologerData.documentImage;
+  try {
+    // Handle image uploads
+    if (req.files) {
+      if (req.files.profileImage) {
+        astrologerData.profileImage = `${req.files.profileImage[0].destination}/${req.files.profileImage[0].filename}`;
+        imagePaths.profileImage = astrologerData.profileImage;
+      }
+      if (req.files.adharFrontImage) {
+        astrologerData.adharFrontImage = `${req.files.adharFrontImage[0].destination}/${req.files.adharFrontImage[0].filename}`;
+        imagePaths.adharFrontImage = astrologerData.adharFrontImage;
+      }
+      if (req.files.adharBackImage) {
+        astrologerData.adharBackImage = `${req.files.adharBackImage[0].destination}/${req.files.adharBackImage[0].filename}`;
+        imagePaths.adharBackImage = astrologerData.adharBackImage;
+      }
+      if (req.files.panImage) {
+        astrologerData.panImage = `${req.files.panImage[0].destination}/${req.files.panImage[0].filename}`;
+        imagePaths.panImage = astrologerData.panImage;
+      }
+      if (req.files.bankPassbookImage) {
+        astrologerData.bankPassbookImage = `${req.files.bankPassbookImage[0].destination}/${req.files.bankPassbookImage[0].filename}`;
+        imagePaths.bankPassbookImage = astrologerData.bankPassbookImage;
+      }
+      if (req.files.cancelChecqueImage) {
+        astrologerData.cancelChecqueImage = `${req.files.cancelChecqueImage[0].destination}/${req.files.cancelChecqueImage[0].filename}`;
+        imagePaths.cancelChecqueImage = astrologerData.cancelChecqueImage;
+      }
+    }
+    const referralCode = await generateReferralCode(name);
+    if (referralCode) {
+      astrologerData.referralCode = referralCode;
     }
 
     const newAstrologer = await Astrologer.create(astrologerData);
@@ -100,22 +139,14 @@ exports.createAstrologer = catchAsync(async (req, res, next) => {
       data: newAstrologer,
     });
   } catch (error) {
-    // Clean up uploaded profile image
-    if (profileImagePath) {
-      await deleteOldFiles(profileImagePath).catch((err) => {
-        console.error("Failed to delete profile image:", err);
-      });
-    }
-    // Clean up uploaded document images
-    if (documentImagePaths.length > 0) {
-      await Promise.all(
-        documentImagePaths.map((path) =>
-          deleteOldFiles(path).catch((err) => {
-            console.error("Failed to delete document image:", err);
-          })
-        )
-      );
-    }
+    // Clean up uploaded images
+    await Promise.all(
+      Object.values(imagePaths).map((path) =>
+        deleteOldFiles(path).catch((err) => {
+          console.error(`Failed to delete image ${path}:`, err);
+        })
+      )
+    );
     return next(error);
   }
 });
@@ -176,8 +207,13 @@ exports.updateAstrologer = catchAsync(async (req, res, next) => {
   const {
     name,
     email,
+    pincode,
+    city,
     mobile,
+    otherPlatformWork,
+    qualification,
     status,
+    isBusy,
     about,
     language,
     experience,
@@ -186,21 +222,22 @@ exports.updateAstrologer = catchAsync(async (req, res, next) => {
     pricing,
     services,
     isBlock,
+    fcmToken,
     bankName,
     ifscCode,
     accountNumber,
     gstNumber,
     state,
-    city,
     address,
+    isExpert,
     isVerify,
+    referralCommission,
+    poojaCommission,
   } = req.body;
 
   console.log(req.body, "body");
-  let profileImagePath;
-  let documentImagePaths = [];
-  const astrologer = await Astrologer.findById(req.params.id);
 
+  const astrologer = await Astrologer.findById(req.params.id);
   if (!astrologer) {
     return next(new AppError("Astrologer not found", 404));
   }
@@ -229,67 +266,89 @@ exports.updateAstrologer = catchAsync(async (req, res, next) => {
 
   const astrologerData = {};
 
-  if (name) astrologerData.name = name;
-  if (email) astrologerData.email = email;
-  if (mobile) astrologerData.mobile = mobile;
-  if (status) astrologerData.status = status;
-  if (about) astrologerData.about = about;
-  if (language)
-    astrologerData.language = language.split(",").map((lang) => lang.trim());
-  if (experience !== undefined) astrologerData.experience = experience;
-  if (speciality) {
-    astrologerData.speciality = speciality ? JSON.parse(speciality) : [];
-  }
-  if (language) {
+  if (name !== undefined) astrologerData.name = name;
+  if (email !== undefined) astrologerData.email = email;
+  if (pincode !== undefined) astrologerData.pincode = Number(pincode);
+  if (city !== undefined) astrologerData.city = city;
+  if (mobile !== undefined) astrologerData.mobile = mobile;
+  if (otherPlatformWork !== undefined)
+    astrologerData.otherPlatformWork = Boolean(otherPlatformWork);
+  if (qualification !== undefined) astrologerData.qualification = qualification;
+  if (status !== undefined) astrologerData.status = status;
+  if (isBusy !== undefined) astrologerData.isBusy = Boolean(isBusy);
+  if (about !== undefined) astrologerData.about = about;
+  if (language !== undefined)
     astrologerData.language = language ? JSON.parse(language) : [];
+  if (experience !== undefined) astrologerData.experience = Number(experience);
+  if (speciality !== undefined)
+    astrologerData.speciality = speciality ? JSON.parse(speciality) : [];
+  if (commission !== undefined) astrologerData.commission = Number(commission);
+  if (pricing !== undefined)
+    astrologerData.pricing = pricing ? JSON.parse(pricing) : undefined;
+  if (services !== undefined)
+    astrologerData.services = services ? JSON.parse(services) : undefined;
+  if (isBlock !== undefined) astrologerData.isBlock = Boolean(isBlock);
+  if (fcmToken !== undefined) astrologerData.fcmToken = fcmToken;
+  if (bankName !== undefined) astrologerData.bankName = bankName;
+  if (ifscCode !== undefined) astrologerData.ifscCode = ifscCode;
+  if (accountNumber !== undefined) astrologerData.accountNumber = accountNumber;
+  if (gstNumber !== undefined) astrologerData.gstNumber = gstNumber;
+  if (state !== undefined) astrologerData.state = state;
+  if (address !== undefined) astrologerData.address = address;
+  if (isExpert !== undefined) astrologerData.isExpert = Boolean(isExpert);
+  if (isVerify !== undefined) astrologerData.isVerify = Boolean(isVerify);
+  if (referralCommission !== undefined)
+    astrologerData.referralCommission = Number(referralCommission);
+  if (poojaCommission !== undefined) {
+    astrologerData.poojaCommission = Number(poojaCommission);
   }
-  if (commission) astrologerData.commission = commission;
-  if (pricing) astrologerData.pricing = JSON.parse(pricing);
-  if (services) astrologerData.services = JSON.parse(services);
-  if (isBlock !== undefined) astrologerData.isBlock = isBlock;
-  if (bankName) astrologerData.bankName = bankName;
-  if (ifscCode) astrologerData.ifscCode = ifscCode;
-  if (accountNumber) astrologerData.accountNumber = accountNumber;
-  if (gstNumber) astrologerData.gstNumber = gstNumber;
-  if (state) astrologerData.state = state;
-  if (city) astrologerData.city = city;
-  if (address) astrologerData.address = address;
-  if (isVerify !== undefined) astrologerData.isVerify = isVerify;
+
+  let imagePaths = {};
+  let oldImagePaths = {};
 
   try {
-    // Handle profile image
-    if (req.files && req.files.profileImage) {
-      const profileImage = req.files.profileImage[0];
-      const imageUrl = `${profileImage.destination}/${profileImage.filename}`;
-      astrologerData.profileImage = imageUrl;
-      profileImagePath = imageUrl;
-
-      // Delete old profile image if exists
-      if (astrologer.profileImage) {
-        await deleteOldFiles(astrologer.profileImage).catch((err) => {
-          console.error("Failed to delete old profile image:", err);
-        });
+    // Handle image uploads
+    if (req.files) {
+      if (req.files.profileImage) {
+        astrologerData.profileImage = `${req.files.profileImage[0].destination}/${req.files.profileImage[0].filename}`;
+        imagePaths.profileImage = astrologerData.profileImage;
+        if (astrologer.profileImage)
+          oldImagePaths.profileImage = astrologer.profileImage;
+      }
+      if (req.files.adharFrontImage) {
+        astrologerData.adharFrontImage = `${req.files.adharFrontImage[0].destination}/${req.files.adharFrontImage[0].filename}`;
+        imagePaths.adharFrontImage = astrologerData.adharFrontImage;
+        if (astrologer.adharFrontImage)
+          oldImagePaths.adharFrontImage = astrologer.adharFrontImage;
+      }
+      if (req.files.adharBackImage) {
+        astrologerData.adharBackImage = `${req.files.adharBackImage[0].destination}/${req.files.adharBackImage[0].filename}`;
+        imagePaths.adharBackImage = astrologerData.adharBackImage;
+        if (astrologer.adharBackImage)
+          oldImagePaths.adharBackImage = astrologer.adharBackImage;
+      }
+      if (req.files.panImage) {
+        astrologerData.panImage = `${req.files.panImage[0].destination}/${req.files.panImage[0].filename}`;
+        imagePaths.panImage = astrologerData.panImage;
+        if (astrologer.panImage) oldImagePaths.panImage = astrologer.panImage;
+      }
+      if (req.files.bankPassbookImage) {
+        astrologerData.bankPassbookImage = `${req.files.bankPassbookImage[0].destination}/${req.files.bankPassbookImage[0].filename}`;
+        imagePaths.bankPassbookImage = astrologerData.bankPassbookImage;
+        if (astrologer.bankPassbookImage)
+          oldImagePaths.bankPassbookImage = astrologer.bankPassbookImage;
+      }
+      if (req.files.cancelChecqueImage) {
+        astrologerData.cancelChecqueImage = `${req.files.cancelChecqueImage[0].destination}/${req.files.cancelChecqueImage[0].filename}`;
+        imagePaths.cancelChecqueImage = astrologerData.cancelChecqueImage;
+        if (astrologer.cancelChecqueImage)
+          oldImagePaths.cancelChecqueImage = astrologer.cancelChecqueImage;
       }
     }
 
-    // Handle document images
-    if (req.files && req.files.documentImage) {
-      astrologerData.documentImage = req.files.documentImage.map(
-        (file) => `${file.destination}/${file.filename}`
-      );
-      documentImagePaths = astrologerData.documentImage;
-
-      // Delete old document images if exists
-      if (astrologer.documentImage && astrologer.documentImage.length > 0) {
-        await Promise.all(
-          astrologer.documentImage.map((path) =>
-            deleteOldFiles(path).catch((err) => {
-              console.error("Failed to delete old document image:", err);
-            })
-          )
-        );
-      }
-    }
+      if (!astrologer.referralCode) {
+          astrologerData.referralCode = generateReferralCode(name);
+        }
 
     const updatedAstrologer = await Astrologer.findByIdAndUpdate(
       req.params.id,
@@ -297,28 +356,29 @@ exports.updateAstrologer = catchAsync(async (req, res, next) => {
       { new: true, runValidators: true }
     ).populate("speciality");
 
+    // Delete old images after successful update
+    await Promise.all(
+      Object.values(oldImagePaths).map((path) =>
+        deleteOldFiles(path).catch((err) => {
+          console.error(`Failed to delete old image ${path}:`, err);
+        })
+      )
+    );
+
     res.status(200).json({
       status: true,
       message: "Astrologer updated successfully",
       data: updatedAstrologer,
     });
   } catch (error) {
-    // Clean up uploaded profile image
-    if (profileImagePath) {
-      await deleteOldFiles(profileImagePath).catch((err) => {
-        console.error("Failed to delete profile image:", err);
-      });
-    }
-    // Clean up uploaded document images
-    if (documentImagePaths.length > 0) {
-      await Promise.all(
-        documentImagePaths.map((path) =>
-          deleteOldFiles(path).catch((err) => {
-            console.error("Failed to delete document image:", err);
-          })
-        )
-      );
-    }
+    // Clean up new uploaded images
+    await Promise.all(
+      Object.values(imagePaths).map((path) =>
+        deleteOldFiles(path).catch((err) => {
+          console.error(`Failed to delete image ${path}:`, err);
+        })
+      )
+    );
     return next(error);
   }
 });

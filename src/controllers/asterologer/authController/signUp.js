@@ -22,7 +22,7 @@ const validateMobile = (mobile) => {
 };
 
 const sendOtp = async (mobile, otp) => {
-  const apiUrl = `http://www.commnestsms.com/api/push.json?apikey=67bd782d034d8&route=transactional&sender=MEDEXA&mobileno=${mobile}&text=Your%20OTP%20Verification%20Code%20is%20${otp}.%20Do%20not%20share%20it%20with%20anyone.%0AMED%20EXAMS`;
+  const apiUrl = `http://www.commnestsms.com/api/push.json?apikey=683af7d0597bd&route=transactional&sender=ASKSHI&mobileno=${mobile}&text=Dear%20User,%0A${otp}%20is%20your%20One%20Time%20Password%20to%20verify%20your%20mobile%20number%20on%20AstroKashi.`;
   try {
     await axios.get(apiUrl);
   } catch (error) {
@@ -45,7 +45,6 @@ const processOtpAndAstrologer = async (identifier, field) => {
     astrologer = await Astrologer.create(astrologerData);
     newAstrologer = true;
   }
-
   astrologer.otp = otp;
   astrologer.otpExpiry = otpExpiry;
   await astrologer.save();

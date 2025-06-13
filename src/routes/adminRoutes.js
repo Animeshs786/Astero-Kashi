@@ -73,6 +73,47 @@ const {
   getSettlementDetail,
   completeSettlement,
 } = require("../controllers/admin/settlement/settlement");
+const {
+  createCategory,
+  getAllCategories,
+  getCategory,
+  updateCategory,
+  deleteCategory,
+} = require("../controllers/admin/productCategory/productCategory");
+const {
+  createProduct,
+  getAllProducts,
+  getProduct,
+  updateProduct,
+  deleteProduct,
+} = require("../controllers/admin/product/product");
+const {
+  getAllProductTransactions,
+  getProductTransaction,
+  updateProductTransaction,
+} = require("../controllers/admin/productTransaction/productTransaction");
+const {
+  createPooja,
+  getAllPoojas,
+  getPooja,
+  updatePooja,
+  deletePooja,
+  createAssignAstrologer,
+  deleteAssignAstrologer,
+  getAstrologersByPooja,
+} = require("../controllers/admin/pooja/pooja");
+const {
+  getAllPoojaTransactions,
+  getPoojaTransaction,
+  updatePoojaTransaction,
+} = require("../controllers/admin/poojaTransaction/poojaTransaction");
+const {
+  createCompatibilityData,
+  getAllCompatibilityData,
+  getCompatibilityData,
+  updateCompatibilityData,
+  deleteCompatibilityData,
+} = require("../controllers/admin/compatibility/compatibility");
 
 const router = express.Router();
 
@@ -143,7 +184,11 @@ router
     fileUploader(
       [
         { name: "profileImage", maxCount: 1 },
-        { name: "documentImage", maxCount: 5 },
+        { name: "adharFrontImage", maxCount: 1 },
+        { name: "adharBackImage", maxCount: 1 },
+        { name: "panImage", maxCount: 1 },
+        { name: "bankPassbookImage", maxCount: 1 },
+        { name: "cancelChecqueImage", maxCount: 1 },
       ],
       "Astrologer"
     ),
@@ -158,7 +203,11 @@ router
     fileUploader(
       [
         { name: "profileImage", maxCount: 1 },
-        { name: "documentImage", maxCount: 5 },
+        { name: "adharFrontImage", maxCount: 1 },
+        { name: "adharBackImage", maxCount: 1 },
+        { name: "panImage", maxCount: 1 },
+        { name: "bankPassbookImage", maxCount: 1 },
+        { name: "cancelChecqueImage", maxCount: 1 },
       ],
       "Astrologer"
     ),
@@ -219,5 +268,90 @@ router
     fileUploader([{ name: "receiptImage", maxCount: 1 }], "Settlement"),
     completeSettlement
   );
+
+//product category
+router
+  .route("/category")
+  .post(
+    fileUploader([{ name: "image", maxCount: 1 }], "Category"),
+    createCategory
+  )
+  .get(getAllCategories);
+
+router
+  .route("/category/:id")
+  .get(getCategory)
+  .patch(
+    fileUploader([{ name: "image", maxCount: 1 }], "Category"),
+    updateCategory
+  )
+  .delete(deleteCategory);
+
+//product
+router
+  .route("/product")
+  .post(
+    fileUploader(
+      [
+        { name: "thumbImage", maxCount: 1 },
+        { name: "image", maxCount: 10 }, // Adjust maxCount as needed
+      ],
+      "Product"
+    ),
+    createProduct
+  )
+  .get(getAllProducts);
+
+router
+  .route("/product/:id")
+  .get(getProduct)
+  .patch(
+    fileUploader(
+      [
+        { name: "thumbImage", maxCount: 1 },
+        { name: "image", maxCount: 10 }, // Adjust maxCount as needed
+      ],
+      "Product"
+    ),
+    updateProduct
+  )
+  .delete(deleteProduct);
+
+//product transactjion
+router.get("/productTransaction", getAllProductTransactions);
+router.get("/productTransaction/:id", getProductTransaction);
+router.patch("/productTransaction/:id", updateProductTransaction);
+
+//pooja transactjion
+router.get("/poojaTransaction", getAllPoojaTransactions);
+router.get("/poojaTransaction/:id", getPoojaTransaction);
+router.patch("/poojaTransaction/:id", updatePoojaTransaction);
+
+//pooja
+router
+  .route("/pooja")
+  .post(fileUploader([{ name: "image", maxCount: 1 }], "Pooja"), createPooja)
+  .get(getAllPoojas);
+
+router
+  .route("/pooja/:id")
+  .get(getPooja)
+  .patch(fileUploader([{ name: "image", maxCount: 1 }], "Pooja"), updatePooja)
+  .delete(deletePooja);
+
+router.post("/assignAstrologer", createAssignAstrologer);
+router.delete("/assignAstrologer/:id", deleteAssignAstrologer);
+router.get("/poojaAstrologer/:id", getAstrologersByPooja);
+
+//compatibility
+router
+  .route("/compatibility")
+  .post(createCompatibilityData)
+  .get(getAllCompatibilityData);
+router
+  .route("/compatibility/:id")
+  .get(getCompatibilityData)
+  .patch(updateCompatibilityData)
+  .delete(deleteCompatibilityData);
 
 module.exports = router;

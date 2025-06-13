@@ -14,7 +14,7 @@ const chatRequestSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["chat", "video"],
+    enum: ["chat", "video","voice"],
     default: "chat",
   },
   createdAt: { type: Date, default: Date.now },

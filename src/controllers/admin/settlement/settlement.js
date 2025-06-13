@@ -5,16 +5,138 @@ const Settlement = require("../../../models/settlement");
 const Astrologer = require("../../../models/asteroLogerSchema");
 const moment = require("moment-timezone");
 const deleteOldFiles = require("../../../utils/deleteOldFiles");
+const PoojaTransaction = require("../../../models/poojaTransaction");
+const ProductTransaction = require("../../../models/productTransaction");
 
 moment.tz.setDefault("Asia/Kolkata");
 
+// exports.createSettlement = catchAsync(async (req, res, next) => {
+//   const { astrologerId, startDate, endDate } = req.body;
+
+//   // Validate input
+//   if (!astrologerId || !startDate || !endDate) {
+//     return next(
+//       new AppError("Astrologer ID, start date, and end date are required", 400)
+//     );
+//   }
+
+//   // Validate astrologer
+//   const astrologer = await Astrologer.findById(astrologerId);
+//   if (!astrologer) {
+//     return next(new AppError("Astrologer not found", 404));
+//   }
+
+//   // Parse and validate dates
+//   const start = moment(startDate, "YYYY-MM-DD")
+//     .tz("Asia/Kolkata")
+//     .startOf("day");
+//   const end = moment(endDate, "YYYY-MM-DD").tz("Asia/Kolkata").endOf("day");
+
+//   if (!start.isValid() || !end.isValid() || start.isAfter(end)) {
+//     return next(new AppError("Invalid date range", 400));
+//   }
+
+//   // Fetch unsettled transactions for the astrologer
+//   const transactions = await Transaction.find({
+//     astrologer: astrologerId,
+//     isSettled: false,
+//     type: { $in: ["chat", "video", "voice"] }, // Include chat, video, voice
+//     status: "success",
+//     createdAt: { $gte: start.toDate(), $lte: end.toDate() },
+//   });
+
+//   if (!transactions.length) {
+//     return res.status(200).json({
+//       status: true,
+//       message: "No unsettled transactions found for the specified period",
+//       data: [],
+//     });
+//   }
+
+//   // Calculate amounts
+//   let totalAmount = 0;
+//   transactions.forEach((txn) => {
+//     totalAmount += txn.amount;
+//   });
+
+//   const commissionRate = astrologer.commission / 100; // e.g., 2% = 0.02
+//   const totalCommission = totalAmount * commissionRate; // Commission amount
+//   const netAmountAfterCommission = totalAmount - totalCommission; // Amount after commission
+//   const gstRate = 0; // 0% GST
+//   const gstCharge = netAmountAfterCommission * gstRate; // GST on net amount
+//   const totalSettlementAmount = netAmountAfterCommission - gstCharge; // Final settlement amount
+
+//   // Check if sufficient lockedBalance
+//   if (astrologer.wallet.lockedBalance < totalAmount) {
+//     return next(
+//       new AppError("Insufficient locked balance for settlement", 400)
+//     );
+//   }
+
+//   // Deduct totalAmount from astrologer's lockedBalance
+//   astrologer.wallet.lockedBalance -= totalAmount;
+//   await astrologer.save({ validateBeforeSave: false });
+
+//   // Create description
+//   const description =
+//     totalSettlementAmount >= 0
+//       ? `Settlement for astrologer ${astrologer.name} for transactions from ${startDate} to ${endDate}`
+//       : `Negative settlement for astrologer ${astrologer.name} for transactions from ${startDate} to ${endDate}`;
+
+//   // Create settlement record
+//   const settlement = new Settlement({
+//     astrologer: astrologerId,
+//     startDate: start.toDate(),
+//     endDate: end.toDate(),
+//     transactions: transactions.map((txn) => txn._id),
+//     totalAmount,
+//     totalCommission,
+//     gstCharge,
+//     totalSettlementAmount,
+//     status: "pending",
+//     description,
+//   });
+
+//   await settlement.save();
+
+//   // Mark transactions as settled
+//   await Transaction.updateMany(
+//     { _id: { $in: settlement.transactions } },
+//     { isSettled: true, settledDate: new Date() }
+//   );
+
+//   res.status(201).json({
+//     status: true,
+//     message: "Settlement record created successfully",
+//     data: settlement,
+//   });
+// });
+
 exports.createSettlement = catchAsync(async (req, res, next) => {
-  const { astrologerId, startDate, endDate } = req.body;
+  const {
+    astrologerId,
+    startDate,
+    endDate,
+    settlementType = "service",
+  } = req.body;
 
   // Validate input
-  if (!astrologerId || !startDate || !endDate) {
+  if (!astrologerId || !startDate || !endDate || !settlementType) {
     return next(
-      new AppError("Astrologer ID, start date, and end date are required", 400)
+      new AppError(
+        "Astrologer ID, start date, end date, and settlement type are required",
+        400
+      )
+    );
+  }
+
+  // Validate settlement type
+  if (!["service", "product", "pooja"].includes(settlementType)) {
+    return next(
+      new AppError(
+        "Invalid settlement type. Must be service, product, or pooja",
+        400
+      )
     );
   }
 
@@ -34,77 +156,178 @@ exports.createSettlement = catchAsync(async (req, res, next) => {
     return next(new AppError("Invalid date range", 400));
   }
 
-  // Fetch unsettled transactions for the astrologer
-  const transactions = await Transaction.find({
-    astrologer: astrologerId,
-    isSettled: false,
-    type: "chat",
-    status: "success",
-    createdAt: { $gte: start.toDate(), $lte: end.toDate() },
-  });
-
-  if (!transactions.length) {
-    return res.status(200).json({
-      status: true,
-      message: "No unsettled transactions found for the specified period",
-      data: [],
-    });
-  }
-
-  // Calculate amounts
   let totalAmount = 0;
-  transactions.forEach((txn) => {
-    totalAmount += txn.amount;
-  });
+  let totalCommission = 0;
+  let gstCharge = 0;
+  let totalSettlementAmount = 0;
+  let transactionIds = [];
+  let productTransactionIds = [];
+  let poojaTransactionIds = [];
+  let description;
 
-  const commissionRate = astrologer.commission / 100; // e.g., 2% = 0.02
-  const totalCommission = totalAmount * commissionRate; // Commission amount
-  const netAmountAfterCommission = totalAmount - totalCommission; // Amount after commission
-  const gstRate = 0.18; // 18% GST
-  const gstCharge = netAmountAfterCommission * gstRate; // GST on net amount
-  const totalSettlementAmount = netAmountAfterCommission - gstCharge; // Final settlement amount
+  // Handle different settlement types
+  if (settlementType === "service") {
+    // Fetch unsettled service transactions (chat, video, voice)
+    const transactions = await Transaction.find({
+      astrologer: astrologerId,
+      isSettled: false,
+      type: { $in: ["chat", "video", "voice"] },
+      status: "success",
+      createdAt: { $gte: start.toDate(), $lte: end.toDate() },
+    });
 
-  // Check if sufficient lockedBalance
-  if (astrologer.wallet.lockedBalance < totalAmount) {
-    return next(
-      new AppError(
-        "Insufficient locked balance for settlement",
-        400
-      )
+    if (!transactions.length) {
+      return res.status(200).json({
+        status: true,
+        message:
+          "No unsettled service transactions found for the specified period",
+        data: [],
+      });
+    }
+
+    // Calculate amounts
+    transactions.forEach((txn) => {
+      totalAmount += txn.amount;
+    });
+    transactionIds = transactions.map((txn) => txn._id);
+
+    const commissionRate = astrologer.commission / 100; // e.g., 2% = 0.02
+    totalCommission = totalAmount * commissionRate;
+    const netAmountAfterCommission = totalAmount - totalCommission;
+    const gstRate = 0; // 0% GST
+    gstCharge = netAmountAfterCommission * gstRate;
+    totalSettlementAmount = netAmountAfterCommission - gstCharge;
+
+    // Check sufficient lockedBalance
+    if (astrologer.wallet.lockedBalance < totalAmount) {
+      return next(
+        new AppError("Insufficient locked balance for service settlement", 400)
+      );
+    }
+
+    // Deduct from lockedBalance
+    astrologer.wallet.lockedBalance -= totalAmount;
+    await astrologer.save({ validateBeforeSave: false });
+
+    description =
+      totalSettlementAmount >= 0
+        ? `Service settlement for astrologer ${astrologer.name} from ${startDate} to ${endDate}`
+        : `Negative service settlement for astrologer ${astrologer.name} from ${startDate} to ${endDate}`;
+
+    // Mark transactions as settled
+    await Transaction.updateMany(
+      { _id: { $in: transactionIds } },
+      { isSettled: true, settledDate: new Date() }
+    );
+  } else if (settlementType === "product") {
+    // Fetch unsettled product transactions with astrologer's referralCode
+    const productTransactions = await ProductTransaction.find({
+      referralCode: astrologer.referralCode,
+      isSettled: false,
+      deliverStatus: "delivered",
+      status: "success",
+      createdAt: { $gte: start.toDate(), $lte: end.toDate() },
+    });
+
+    if (!productTransactions.length) {
+      return res.status(200).json({
+        status: true,
+        message:
+          "No unsettled product transactions found for the specified period",
+        data: [],
+      });
+    }
+
+    // Calculate amounts using referralAmount
+    productTransactions.forEach((txn) => {
+      totalAmount += txn.referralAmount || 0; // Use referralAmount, default to 0 if unset
+    });
+    productTransactionIds = productTransactions.map((txn) => txn._id);
+
+    // No commission or GST for product settlements
+    totalCommission = 0;
+    gstCharge = 0;
+    totalSettlementAmount = totalAmount;
+
+    description = `Product referral settlement for astrologer ${astrologer.name} from ${startDate} to ${endDate}`;
+
+    // Mark product transactions as settled
+    await ProductTransaction.updateMany(
+      { _id: { $in: productTransactionIds } },
+      { isSettled: true }
+    );
+  } else if (settlementType === "pooja") {
+    // Fetch unsettled pooja transactions
+    const poojaTransactions = await PoojaTransaction.find({
+      astrologer: astrologerId,
+      isSettled: false,
+      status: "success",
+      createdAt: { $gte: start.toDate(), $lte: end.toDate() },
+    });
+
+    if (!poojaTransactions.length) {
+      return res.status(200).json({
+        status: true,
+        message:
+          "No unsettled pooja transactions found for the specified period",
+        data: [],
+      });
+    }
+
+    // Calculate amounts using poojaCommission
+    poojaTransactions.forEach((txn) => {
+      totalAmount += txn.poojaCommission || 0; // Use poojaCommission, default to 0 if unset
+    });
+    poojaTransactionIds = poojaTransactions.map((txn) => txn._id);
+
+    const commissionRate = astrologer.poojaCommission / 100; // e.g., 2% = 0.02
+    totalCommission = totalAmount * commissionRate;
+    const netAmountAfterCommission = totalAmount - totalCommission;
+    const gstRate = 0; // 0% GST
+    gstCharge = netAmountAfterCommission * gstRate;
+    totalSettlementAmount = netAmountAfterCommission - gstCharge;
+
+    // Check sufficient lockedBalance
+    if (astrologer.wallet.lockedBalance < totalAmount) {
+      return next(
+        new AppError("Insufficient locked balance for pooja settlement", 400)
+      );
+    }
+
+    // Deduct from lockedBalance
+    astrologer.wallet.lockedBalance -= totalAmount;
+    await astrologer.save({ validateBeforeSave: false });
+
+    description =
+      totalSettlementAmount >= 0
+        ? `Pooja settlement for astrologer ${astrologer.name} from ${startDate} to ${endDate}`
+        : `Negative pooja settlement for astrologer ${astrologer.name} from ${startDate} to ${endDate}`;
+
+    // Mark pooja transactions as settled
+    await PoojaTransaction.updateMany(
+      { _id: { $in: poojaTransactionIds } },
+      { isSettled: true, settledDate: new Date() }
     );
   }
-
-  // Deduct totalAmount from astrologer's lockedBalance
-  astrologer.wallet.lockedBalance -= totalAmount;
-  await astrologer.save({ validateBeforeSave: false });
-
-  // Create description
-  const description =
-    totalSettlementAmount >= 0
-      ? `Settlement for astrologer ${astrologer.name} for transactions from ${startDate} to ${endDate}`
-      : `Negative settlement for astrologer ${astrologer.name} for transactions from ${startDate} to ${endDate}`;
 
   // Create settlement record
   const settlement = new Settlement({
     astrologer: astrologerId,
     startDate: start.toDate(),
     endDate: end.toDate(),
-    transactions: transactions.map((txn) => txn._id),
+    transactions: transactionIds,
+    productTransaction: productTransactionIds,
+    poojaTransaction: poojaTransactionIds,
     totalAmount,
     totalCommission,
     gstCharge,
     totalSettlementAmount,
+    settlementType,
     status: "pending",
     description,
   });
 
   await settlement.save();
-
-  // Mark transactions as settled
-  await Transaction.updateMany(
-    { _id: { $in: settlement.transactions } },
-    { isSettled: true, settledDate: new Date() }
-  );
 
   res.status(201).json({
     status: true,

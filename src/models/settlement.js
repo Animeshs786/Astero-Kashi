@@ -9,8 +9,21 @@ const settlementSchema = new mongoose.Schema({
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
   transactions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Transaction" }],
+  productTransaction:[{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "ProductTransaction"
+  }],
+  poojaTransaction:[{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "PoojaTransaction"
+  }],
   totalAmount: { type: Number, required: true },
   totalCommission: { type: Number, required: true },
+  settlementType:{
+    type:String,
+    enum:["service","product","pooja"], //servie means chat call video call service
+    default:"service"
+  },
   gstCharge:{type:Number,required:true},
   totalSettlementAmount: { type: Number, required: true },
   status: {

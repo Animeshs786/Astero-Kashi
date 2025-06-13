@@ -17,12 +17,13 @@ exports.getAllAstrologers = catchAsync(async (req, res) => {
   }
 
   if (speciality) query.speciality = { $in: [speciality] };
+
   // Status filter
   if (status) {
     query.status = status;
   }
 
-  // Service filters (isChat, isCall, isVideo)
+  // Service filters
   if (isChat !== undefined) {
     query["services.chat"] = isChat === "true";
   }
@@ -35,7 +36,11 @@ exports.getAllAstrologers = catchAsync(async (req, res) => {
 
   const astrologers = await Astrologer.find(query)
     .populate("speciality")
-    .sort({ createdAt: -1 });
+    .sort([
+      ["status", -1], // Sort by status (online before offline)
+      ["isBusy", 1],  // Within online, non-busy (false) before busy (true)
+      ["createdAt", -1] // Finally sort by createdAt
+    ]);
 
   res.status(200).json({
     status: true,

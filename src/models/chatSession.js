@@ -15,8 +15,12 @@ const chatSessionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["chat", "video"],
+    enum: ["chat", "video","voice"],
     default: "chat",
+  },
+  callId:{
+    type:String,
+    default:""
   },
   startedAt: { type: Date, default: Date.now },
   endedAt: { type: Date },

@@ -7,6 +7,7 @@ exports.getChatRequests = catchAsync(async (req, res, next) => {
   const user = req.user._id; // Assume astrologer ID from auth middleware
   const chatRequests = await ChatRequest.find({ user: user })
     .populate("user", "name profileImage")
+    .populate("astrologer", "name profileImage")
     .sort({ createdAt: -1 });
   res.status(200).json({
     status: true,
@@ -19,7 +20,8 @@ exports.getChatSession = catchAsync(async (req, res, next) => {
   const user = req.user._id; // Assume astrologer ID from auth middleware
   const chatRequests = await ChatSession.find({ user: user })
     .populate("user", "name ")
-    .sort({ createdAt: -1 });
+     .populate("astrologer", "name profileImage")
+    .sort({ startedAt: -1 });
   res.status(200).json({
     status: true,
     message: "Chat session fetched successfully",

@@ -6,6 +6,10 @@ const astrologerSchema = new mongoose.Schema({
   email: {
     type: String,
   },
+  pincode: {
+    type: Number,
+  },
+  city: String,
   mobile: {
     type: String,
     required: true,
@@ -16,14 +20,21 @@ const astrologerSchema = new mongoose.Schema({
   otpExpiry: {
     type: Date,
   },
+  otherPlatformWork: {
+    type: Boolean,
+    default: false,
+  },
+  qualification: {
+    type: String,
+  },
   status: {
     type: String,
     enum: ["online", "offline"],
     default: "offline",
   },
-  isBusy:{
-    type:Boolean,
-    default:false
+  isBusy: {
+    type: Boolean,
+    default: false,
   },
   profileImage: String,
   about: {
@@ -41,6 +52,10 @@ const astrologerSchema = new mongoose.Schema({
     },
   ],
   commission: {
+    type: Number,
+    default: 0,
+  },
+  poojaCommission: {
     type: Number,
     default: 0,
   },
@@ -62,6 +77,10 @@ const astrologerSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  fcmToken: {
+    type: String,
+    default: "",
+  },
   bankName: {
     type: String,
   },
@@ -74,9 +93,33 @@ const astrologerSchema = new mongoose.Schema({
     type: String,
   },
   state: String,
-  city: String,
   address: String,
-  documentImage: [String],
+  isExpert: {
+    default: false,
+    type: Boolean,
+  },
+  adharFrontImage: {
+    type: String,
+    default: "",
+  },
+  adharBackImage: {
+    type: String,
+    default: "",
+  },
+  panImage: {
+    type: String,
+    default: "",
+  },
+  bankPassbookImage: {
+    type: String,
+    default: "",
+  },
+  cancelChecqueImage: {
+    type: String,
+    default: "",
+  },
+  referralCode: { type: String }, //it must be unique
+  referralCommission: { type: Number, default: 0 }, //value calculate in percentage
   isVerify: {
     type: Boolean,
     default: false,

@@ -4,7 +4,7 @@ const catchAsync = require("../../../utils/catchAsync");
 const createToken = require("../../../utils/createToken");
 
 exports.otpVerify = catchAsync(async (req, res, next) => {
-  const { otp, mobile, email } = req.body;
+  const { otp, mobile, email,fcmToken } = req.body;
 
   if (!mobile && !email) {
     return next(
@@ -40,6 +40,9 @@ exports.otpVerify = catchAsync(async (req, res, next) => {
 
   astrologer.otp = undefined;
   astrologer.otpExpiry = undefined;
+  if (fcmToken) {
+    astrologer.fcmToken = fcmToken;
+  }
   await astrologer.save();
 
   createToken(astrologer, 200, res, true,false);

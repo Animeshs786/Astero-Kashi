@@ -5,6 +5,14 @@ const transactionSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  orderId:{
+    type:String,
+    default:""
+  },
+  transactionId:{
+    type:String,
+    default:""
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -27,7 +35,7 @@ const transactionSchema = new mongoose.Schema({
   },
   type: {
     type:String,
-    enum: ["walletRecharge","chat","video"],
+    enum: ["walletRecharge","chat","video","voice"],
     required: true,
   },
   duration:{
