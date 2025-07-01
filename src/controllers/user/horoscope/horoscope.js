@@ -320,6 +320,866 @@ exports.getMonthlyHoroscope = catchAsync(async (req, res, next) => {
   });
 });
 
+// exports.getKundliDetails = catchAsync(async (req, res, next) => {
+//   const {
+//     name,
+//     dob, // Format: YYYY-MM-DD
+//     tob, // Format: HH:MM (24-hour)
+//     place,
+//     latitude,
+//     longitude,
+//     timezone = 5.5, // Default to IST
+//     gender,
+//     language = "en", // Default to English
+//     varshaphal_year = new Date().getFullYear(), // Default to current year
+//     sections = [], // Optional: specify sections to fetch
+//     chartTypes = ["D1", "D9"], // Default to D1 and D9 charts
+//   } = req.body;
+
+//   console.log(req.body, "body");
+
+//   // Validate inputs
+//   if (!name || !dob || !tob || !place || !latitude || !longitude || !gender) {
+//     return next(
+//       new AppError(
+//         "Name, date of birth, time of birth, place, latitude, longitude, and gender are required",
+//         400
+//       ),
+//       { status: false }
+//     );
+//   }
+
+//   // Validate DOB format (YYYY-MM-DD)
+//   const dobRegex = /^\d{4}-\d{2}-\d{2}$/;
+//   if (!dobRegex.test(dob)) {
+//     return next(new AppError("Invalid DOB format. Use YYYY-MM-DD", 400), {
+//       status: false,
+//     });
+//   }
+
+//   // Validate TOB format (HH:MM)
+//   const tobRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+//   if (!tobRegex.test(tob)) {
+//     return next(new AppError("Invalid TOB format. Use HH:MM (24-hour)", 400), {
+//       status: false,
+//     });
+//   }
+
+//   // Validate gender
+//   const validGenders = ["male", "female", "other"];
+//   if (!validGenders.includes(gender.toLowerCase())) {
+//     return next(
+//       new AppError("Invalid gender. Use male, female, or other", 400),
+//       { status: false }
+//     );
+//   }
+
+//   // Validate latitude (-90 to 90)
+//   const lat = parseFloat(latitude);
+//   if (isNaN(lat) || lat < -90 || lat > 90) {
+//     return next(
+//       new AppError("Invalid latitude. Must be between -90 and 90", 400),
+//       { status: false }
+//     );
+//   }
+
+//   // Validate longitude (-180 to 180)
+//   const lon = parseFloat(longitude);
+//   if (isNaN(lon) || lon < -180 || lon > 180) {
+//     return next(
+//       new AppError("Invalid longitude. Must be between -180 and 180", 400),
+//       { status: false }
+//     );
+//   }
+
+//   // Validate timezone
+//   const tz = parseFloat(timezone);
+//   if (isNaN(tz) || tz < -12 || tz > 14) {
+//     return next(
+//       new AppError("Invalid timezone. Must be between -12 and 14", 400),
+//       { status: false }
+//     );
+//   }
+
+//   // Validate language
+//   const validLanguages = ["en", "hi"];
+//   if (!validLanguages.includes(language.toLowerCase())) {
+//     return next(new AppError("Invalid language. Use en or hi", 400), {
+//       status: false,
+//     });
+//   }
+
+//   // Validate varshaphal_year
+//   const year = parseInt(varshaphal_year);
+//   if (isNaN(year) || year < 1900 || year > 2100) {
+//     return next(new AppError("Invalid varshaphal year.", 400), {
+//       status: false,
+//     });
+//   }
+
+//   // Validate chartTypes
+//   const validChartTypes = [
+//     "chalit",
+//     "SUN",
+//     "MOON",
+//     "D1",
+//     "D2",
+//     "D3",
+//     "D4",
+//     "D5",
+//     "D7",
+//     "D8",
+//     "D9",
+//     "D10",
+//     "D12",
+//     "D16",
+//     "D20",
+//     "D24",
+//     "D27",
+//     "D30",
+//     "D40",
+//     "D45",
+//     "D60",
+//   ];
+//   if (chartTypes.some((chart) => !validChartTypes.includes(chart))) {
+//     return next(new AppError("Invalid chart type specified.", 400), {
+//       status: false,
+//     });
+//   }
+
+//   // Extract DOB components
+//   const [dobYear, month, day] = dob.split("-").map(Number);
+//   if (
+//     !Number.isInteger(day) ||
+//     !Number.isInteger(month) ||
+//     !Number.isInteger(dobYear) ||
+//     month < 1 ||
+//     month > 12 ||
+//     day < 1 ||
+//     day > 31
+//   ) {
+//     return next(
+//       new AppError(
+//         "Invalid date of birth components. Ensure YYYY-MM-DD format.",
+//         400
+//       ),
+//       { status: false }
+//     );
+//   }
+
+//   // Extract TOB components
+//   const [hour, minute] = tob.split(":").map(Number);
+//   if (
+//     !Number.isInteger(hour) ||
+//     !Number.isInteger(minute) ||
+//     hour < 0 ||
+//     hour > 23 ||
+//     minute < 0 ||
+//     minute > 59
+//   ) {
+//     return next(
+//       new AppError(
+//         "Invalid time of birth components. Ensure HH:MM format.",
+//         400
+//       ),
+//       { status: false }
+//     );
+//   }
+
+//   // Prepare API request data
+//   const requestData = {
+//     day,
+//     month,
+//     year: dobYear,
+//     hour,
+//     min: minute,
+//     lat,
+//     lon,
+//     tzone: tz,
+//     language: language.toLowerCase(),
+//     planetColor: "#ff0000", // Required for horo_chart_image
+//     signColor: "#00ff00", // Required for horo_chart_image
+//     lineColor: "#0000ff", // Required for horo_chart_image
+//     chartType: "north", // Required for horo_chart_image
+//   };
+
+//   // Validate requestData
+//   if (
+//     isNaN(requestData.day) ||
+//     isNaN(requestData.month) ||
+//     isNaN(requestData.year) ||
+//     isNaN(requestData.hour) ||
+//     isNaN(requestData.min) ||
+//     isNaN(requestData.lat) ||
+//     isNaN(requestData.lon) ||
+//     isNaN(requestData.tzone)
+//   ) {
+//     return next(
+//       new AppError(
+//         "Invalid request data: day, month, year, hour, minute, lat, lon, or tzone is not a number",
+//         400
+//       ),
+//       { status: false }
+//     );
+//   }
+
+//   // Prepare Varshphal request data
+//   const varshaphalRequestData = {
+//     ...requestData,
+//     varshaphal_year: year,
+//   };
+
+//   // Prepare authorization header
+//   const authString = Buffer.from(
+//     `${process.env.ASTROLOGY_API_USER_ID}:${process.env.ASTROLOGY_API_KEY}`
+//   ).toString("base64");
+//   const headers = {
+//     Authorization: `Basic ${authString}`,
+//     "Content-Type": "application/json",
+//   };
+
+//   // List of planets for planet-specific endpoints
+//   const planets = [
+//     "sun",
+//     "moon",
+//     "mars",
+//     "mercury",
+//     "jupiter",
+//     "venus",
+//     "saturn",
+//   ];
+
+//   // Define sections to fetch
+//   const allSections = [
+//     "basicDetails",
+//     "astroDetails",
+//     "planetaryPositions",
+//     "lalkitab",
+//     "varshaphal",
+//     "kpSystem",
+//     "panchang",
+//     "ashtakvarga",
+//     "dosha",
+//     "remedies",
+//     "suggestions",
+//     "numero",
+//     "nakshatra",
+//     "dasha",
+//     "reports",
+//     "charts",
+//     "ghatChakra",
+//   ];
+//   const sectionsToFetch = sections.length > 0 ? sections : allSections;
+
+//   try {
+//     // Initialize response data
+//     const kundliDetails = {
+//       basicDetails: {},
+//       astroDetails: {},
+//       planetaryPositions: [],
+//       lalkitab: {
+//         horoscope: {},
+//         debts: {},
+//         houses: {},
+//         planets: {},
+//         remedies: {},
+//       },
+//       varshaphal: {},
+//       kpSystem: {},
+//       panchang: {},
+//       ashtakvarga: { planetAshtak: {}, sarvashtak: {} },
+//       dosha: { kalsarpa: {}, manglik: {}, sadhesati: {}, pitraDosha: {} },
+//       remedies: { lalkitab: {} },
+//       suggestions: { gem: {}, rudraksha: {} },
+//       numero: {},
+//       nakshatra: {},
+//       dasha: { vimshottari: {}, char: {}, yogini: {} },
+//       reports: {
+//         ascendant: {},
+//         house: {},
+//         planet: {},
+//         natalChartInterpretation: {},
+//       },
+//       charts: {},
+//       ghatChakra: {},
+//     };
+
+//     // Define API requests based on sections
+//     const requests = [];
+
+//     if (sectionsToFetch.includes("basicDetails")) {
+//       requests.push({
+//         name: "birth_details",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/birth_details`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "ayanamsha",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/ayanamsha`,
+//         data: requestData,
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("astroDetails")) {
+//       requests.push({
+//         name: "astro_details",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/astro_details`,
+//         data: requestData,
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("planetaryPositions")) {
+//       requests.push({
+//         name: "planets",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/planets`,
+//         data: requestData,
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("lalkitab")) {
+//       requests.push({
+//         name: "lalkitab_horoscope",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/lalkitab_horoscope`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "lalkitab_debts",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/lalkitab_debts`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "lalkitab_houses",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/lalkitab_houses`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "lalkitab_planets",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/lalkitab_planets`,
+//         data: requestData,
+//       });
+//       planets.forEach((planet) => {
+//         requests.push({
+//           name: `lalkitab_remedies_${planet}`,
+//           method: "post",
+//           url: `${ASTROLOGY_API_BASE_URL}/lalkitab_remedies/${planet}`,
+//           data: requestData,
+//         });
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("varshaphal")) {
+//       requests.push({
+//         name: "varshaphal_details",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/varshaphal_details`,
+//         data: varshaphalRequestData,
+//       });
+//       requests.push({
+//         name: "varshaphal_planets",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/varshaphal_planets`,
+//         data: varshaphalRequestData,
+//       });
+//       requests.push({
+//         name: "varshaphal_muntha",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/varshaphal_muntha`,
+//         data: varshaphalRequestData,
+//       });
+//       requests.push({
+//         name: "varshaphal_mudda_dasha",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/varshaphal_mudda_dasha`,
+//         data: varshaphalRequestData,
+//       });
+//       requests.push({
+//         name: "varshaphal_panchavargeeya_bala",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/varshaphal_panchavargeeya_bala`,
+//         data: varshaphalRequestData,
+//       });
+//       requests.push({
+//         name: "varshaphal_harsha_bala",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/varshaphal_harsha_bala`,
+//         data: varshaphalRequestData,
+//       });
+//       requests.push({
+//         name: "varshaphal_saham_points",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/varshaphal_saham_points`,
+//         data: varshaphalRequestData,
+//       });
+//       requests.push({
+//         name: "varshaphal_yoga",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/varshaphal_yoga`,
+//         data: varshaphalRequestData,
+//       });
+//       requests.push({
+//         name: "varshaphal_year_chart",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/varshaphal_year_chart`,
+//         data: varshaphalRequestData,
+//       });
+//       requests.push({
+//         name: "varshaphal_month_chart",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/varshaphal_month_chart`,
+//         data: varshaphalRequestData,
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("kpSystem")) {
+//       requests.push({
+//         name: "kp_planets",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/kp_planets`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "kp_house_cusps",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/kp_house_cusps`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "kp_birth_chart",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/kp_birth_chart`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "kp_house_significator",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/kp_house_significator`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "kp_planet_significator",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/kp_planet_significator`,
+//         data: requestData,
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("panchang")) {
+//       requests.push({
+//         name: "basic_panchang",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/basic_panchang`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "advanced_panchang",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/advanced_panchang`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "hora_muhurta",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/hora_muhurta`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "chaughadiya_muhurta",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/chaughadiya_muhurta`,
+//         data: requestData,
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("ashtakvarga")) {
+//       planets.forEach((planet) => {
+//         requests.push({
+//           name: `planet_ashtak_${planet}`,
+//           method: "post",
+//           url: `${ASTROLOGY_API_BASE_URL}/planet_ashtak/${planet}`,
+//           data: requestData,
+//         });
+//       });
+//       requests.push({
+//         name: "sarvashtak",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/sarvashtak`,
+//         data: requestData,
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("dosha")) {
+//       requests.push({
+//         name: "kalsarpa_details",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/kalsarpa_details`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "manglik",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/manglik`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "sadhesati_current_status",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/sadhesati_current_status`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "sadhesati_life_details",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/sadhesati_life_details`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "pitra_dosha_report",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/pitra_dosha_report`,
+//         data: requestData,
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("remedies")) {
+//       planets.forEach((planet) => {
+//         requests.push({
+//           name: `lalkitab_remedies_${planet}`,
+//           method: "post",
+//           url: `${ASTROLOGY_API_BASE_URL}/lalkitab_remedies/${planet}`,
+//           data: requestData,
+//         });
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("suggestions")) {
+//       requests.push({
+//         name: "basic_gem_suggestion",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/basic_gem_suggestion`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "rudraksha_suggestion",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/rudraksha_suggestion`,
+//         data: requestData,
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("numero")) {
+//       requests.push({
+//         name: "numero_table",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/numero_table`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "numero_report",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/numero_report`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "numero_prediction_daily",
+//         method: "post", // Changed to POST for consistency
+//         url: `${ASTROLOGY_API_BASE_URL}/numero_prediction/daily`,
+//         data: requestData, // Use data instead of params
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("nakshatra")) {
+//       requests.push({
+//         name: "daily_nakshatra_prediction",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/daily_nakshatra_prediction`,
+//         data: requestData,
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("dasha")) {
+//       requests.push({
+//         name: "current_vdasha",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/current_vdasha`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "current_chardasha",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/current_chardasha`,
+//         data: requestData,
+//       });
+//       requests.push({
+//         name: "current_yogini_dasha",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/current_yogini_dasha`,
+//         data: requestData,
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("reports")) {
+//       requests.push({
+//         name: "general_ascendant_report",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/general_ascendant_report`,
+//         data: requestData,
+//       });
+//       planets.forEach((planet) => {
+//         requests.push({
+//           name: `general_house_${planet}`,
+//           method: "post",
+//           url: `${ASTROLOGY_API_BASE_URL}/general_house_report/${planet}`,
+//           data: requestData,
+//         });
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("charts")) {
+//       chartTypes.forEach((chartId) => {
+//         requests.push({
+//           name: `horo_chart_${chartId.toLowerCase()}`,
+//           method: "post",
+//           url: `${ASTROLOGY_API_BASE_URL}/horo_chart/${chartId}`,
+//           data: requestData,
+//         });
+//         requests.push({
+//           name: `horo_chart_image_${chartId.toLowerCase()}`,
+//           method: "post", // Changed to POST per API documentation
+//           url: `${ASTROLOGY_API_BASE_URL}/horo_chart_image/${chartId}`,
+//           data: requestData, // Use data instead of params
+//         });
+//       });
+//     }
+
+//     if (sectionsToFetch.includes("ghatChakra")) {
+//       requests.push({
+//         name: "ghat_chakra",
+//         method: "post",
+//         url: `${ASTROLOGY_API_BASE_URL}/ghat_chakra`,
+//         data: requestData,
+//       });
+//     }
+
+//     // Execute API requests
+//     const responses = await Promise.all(
+//       requests.map(async ({ name, method, url, data, params }) => {
+//         try {
+//           console.log(
+//             `Sending ${method.toUpperCase()} request to ${url} with ${
+//               method === "get" ? "params" : "data"
+//             }:`,
+//             JSON.stringify(method === "get" ? params : data, null, 2)
+//           );
+//           const response =
+//             method === "get"
+//               ? await axios.get(url, { headers, params })
+//               : await axios.post(url, data, { headers });
+//           console.log(`Success for ${name} (${url}):`, response.status);
+//           return { name, data: response.data };
+//         } catch (error) {
+//           console.error(
+//             `Error for ${name} (${url}):`,
+//             error.response?.status,
+//             error.response?.data?.msg || error.message,
+//             error.response?.data
+//           );
+//           return {
+//             name,
+//             data: null,
+//             error: error.response?.data || error.message,
+//           };
+//         }
+//       })
+//     );
+
+//     // Log failed requests
+//     const failedResponses = responses.filter((r) => r.error);
+//     if (failedResponses.length > 0) {
+//       console.warn(
+//         "Failed requests:",
+//         failedResponses.map((r) => `${r.name}: ${JSON.stringify(r.error)}`)
+//       );
+//     }
+
+//     // Map responses to kundliDetails
+//     responses.forEach(({ name, data }) => {
+//       if (!data) return; // Skip failed requests
+//       if (name === "birth_details")
+//         kundliDetails.basicDetails = { ...kundliDetails.basicDetails, ...data };
+//       if (name === "ayanamsha")
+//         kundliDetails.basicDetails.ayanamsha = data.ayanamsha || "Unknown";
+//       if (name === "astro_details") kundliDetails.astroDetails = data;
+//       if (name === "planets") {
+//         kundliDetails.planetaryPositions = data.map((planet) => ({
+//           name: planet.name,
+//           sign: planet.sign,
+//           degree: planet.fullDegree || "",
+//           house: planet.house || "",
+//           nakshatra: planet.nakshatra || "N/A",
+//           nakshatraLord: planet.nakshatra_lord || "N/A",
+//           isRetro: planet.isRetro || "false",
+//         }));
+//       }
+//       if (name === "lalkitab_horoscope")
+//         kundliDetails.lalkitab.horoscope = data;
+//       if (name === "lalkitab_debts") kundliDetails.lalkitab.debts = data;
+//       if (name === "lalkitab_houses") kundliDetails.lalkitab.houses = data;
+//       if (name === "lalkitab_planets") kundliDetails.lalkitab.planets = data;
+//       if (name.startsWith("lalkitab_remedies_")) {
+//         const planet = name.replace("lalkitab_remedies_", "");
+//         kundliDetails.lalkitab.remedies[planet] = data;
+//         kundliDetails.remedies.lalkitab[planet] = data;
+//       }
+//       if (name === "varshaphal_details")
+//         kundliDetails.varshaphal.details = data;
+//       if (name === "varshaphal_planets")
+//         kundliDetails.varshaphal.planets = data;
+//       if (name === "varshaphal_muntha") kundliDetails.varshaphal.muntha = data;
+//       if (name === "varshaphal_mudda_dasha")
+//         kundliDetails.varshaphal.muddaDasha = data;
+//       if (name === "varshaphal_panchavargeeya_bala")
+//         kundliDetails.varshaphal.panchavargeeya = data;
+//       if (name === "varshaphal_harsha_bala")
+//         kundliDetails.varshaphal.harshaBala = data;
+//       if (name === "varshaphal_saham_points")
+//         kundliDetails.varshaphal.sahamPoints = data;
+//       if (name === "varshaphal_yoga") kundliDetails.varshaphal.yoga = data;
+//       if (name === "varshaphal_year_chart")
+//         kundliDetails.varshaphal.yearChart = data;
+//       if (name === "varshaphal_month_chart")
+//         kundliDetails.varshaphal.monthChart = data;
+//       if (name === "kp_planets") kundliDetails.kpSystem.planets = data;
+//       if (name === "kp_house_cusps") kundliDetails.kpSystem.houseCusps = data;
+//       if (name === "kp_birth_chart") kundliDetails.kpSystem.birthChart = data;
+//       if (name === "kp_house_significator")
+//         kundliDetails.kpSystem.houseSignificator = data;
+//       if (name === "kp_planet_significator")
+//         kundliDetails.kpSystem.planetSignificator = data;
+//       if (name === "basic_panchang") kundliDetails.panchang.basic = data;
+//       if (name === "advanced_panchang") kundliDetails.panchang.advanced = data;
+//       if (name === "hora_muhurta") kundliDetails.panchang.horaMuhurta = data;
+//       if (name === "chaughadiya_muhurta")
+//         kundliDetails.panchang.chaughadiya = data;
+//       if (name.startsWith("planet_ashtak_")) {
+//         const planet = name.replace("planet_ashtak_", "");
+//         kundliDetails.ashtakvarga.planetAshtak[planet] = data;
+//       }
+//       if (name === "sarvashtak") kundliDetails.ashtakvarga.sarvashtak = data;
+//       if (name === "kalsarpa_details") kundliDetails.dosha.kalsarpa = data;
+//       if (name === "manglik") kundliDetails.dosha.manglik = data;
+//       if (name === "sadhesati_current_status")
+//         kundliDetails.dosha.sadhesati.currentStatus = data;
+//       if (name === "sadhesati_life_details")
+//         kundliDetails.dosha.sadhesati.lifeDetails = data;
+//       if (name === "pitra_dosha_report") kundliDetails.dosha.pitraDosha = data;
+//       if (name === "basic_gem_suggestion") kundliDetails.suggestions.gem = data;
+//       if (name === "rudraksha_suggestion")
+//         kundliDetails.suggestions.rudraksha = data;
+//       if (name === "numero_table") kundliDetails.numero.table = data;
+//       if (name === "numero_report") kundliDetails.numero.report = data;
+//       if (name === "numero_prediction_daily")
+//         kundliDetails.numero.dailyPrediction = data;
+//       if (name === "daily_nakshatra_prediction")
+//         kundliDetails.nakshatra.dailyPrediction = data;
+//       if (name === "current_vdasha")
+//         kundliDetails.dasha.vimshottari = { current: data };
+//       if (name === "current_chardasha")
+//         kundliDetails.dasha.char = { current: data };
+//       if (name === "current_yogini_dasha")
+//         kundliDetails.dasha.yogini = { current: data };
+//       if (name === "general_ascendant_report") {
+//         kundliDetails.reports.ascendant = {
+//           sign:
+//             data.asc_report?.ascendant ||
+//             kundliDetails.planetaryPositions?.find(
+//               (p) => p.name === "Ascendant"
+//             )?.sign ||
+//             "Unknown",
+//           characteristics: data.asc_report?.report || "No report available",
+//         };
+//       }
+//       if (name.startsWith("general_house_")) {
+//         const planet = name.replace("general_house_", "");
+//         kundliDetails.reports.house[planet] = data;
+//       }
+//       if (name.startsWith("horo_chart_")) {
+//         const chartId = name.replace("horo_chart_", "").toUpperCase();
+//         kundliDetails.charts[chartId.toLowerCase()] = data;
+//       }
+//       if (name.startsWith("horo_chart_image_")) {
+//         const chartId = name.replace("horo_chart_image_", "").toUpperCase();
+//         kundliDetails.charts[`${chartId.toLowerCase()}Image`] = data;
+//       }
+//       if (name === "ghat_chakra") kundliDetails.ghatChakra = data;
+//     });
+
+//     // Finalize basicDetails
+//     kundliDetails.basicDetails = {
+//       name,
+//       dob,
+//       tob,
+//       place,
+//       latitude: lat,
+//       longitude: lon,
+//       timezone: tz,
+//       gender: gender.toLowerCase(),
+//       ascendant:
+//         kundliDetails.basicDetails.ascendant ||
+//         kundliDetails.planetaryPositions?.find((p) => p.name === "Ascendant")
+//           ?.sign ||
+//         "Unknown",
+//       moonSign:
+//         kundliDetails.basicDetails.moon_sign ||
+//         kundliDetails.planetaryPositions?.find((p) => p.name === "Moon")
+//           ?.sign ||
+//         "Unknown",
+//       sunSign:
+//         kundliDetails.basicDetails.sun_sign ||
+//         kundliDetails.planetaryPositions?.find((p) => p.name === "Sun")?.sign ||
+//         "Unknown",
+//       sunrise: kundliDetails.basicDetails.sunrise || "Unknown",
+//       sunset: kundliDetails.basicDetails.sunset || "Unknown",
+//       ayanamsha: kundliDetails.basicDetails.ayanamsha || "Unknown",
+//     };
+
+//     // If there were failed requests, include a warning in the response
+//     if (failedResponses.length > 0) {
+//       res.status(200).json({
+//         status: true,
+//         message: "Kundli details fetched with some errors",
+//         errors: failedResponses.map((r) => ({
+//           endpoint: r.name,
+//           error: r.error,
+//         })),
+//         data: kundliDetails,
+//       });
+//     } else {
+//       res.status(200).json({
+//         status: true,
+//         message: "Kundli details fetched successfully",
+//         data: kundliDetails,
+//       });
+//     }
+//   } catch (error) {
+//     console.error("AstrologyAPI error:", error.message, error.stack);
+//     return next(
+//       new AppError(
+//         `Failed to fetch Kundli details: ${error.message}`,
+//         error.response?.status || 500
+//       ),
+//       { status: false }
+//     );
+//   }
+// });
+
 exports.getKundliDetails = catchAsync(async (req, res, next) => {
   const {
     name,
@@ -549,7 +1409,7 @@ exports.getKundliDetails = catchAsync(async (req, res, next) => {
     "saturn",
   ];
 
-  // Define sections to fetch
+  // Define all possible sections
   const allSections = [
     "basicDetails",
     "astroDetails",
@@ -569,41 +1429,99 @@ exports.getKundliDetails = catchAsync(async (req, res, next) => {
     "charts",
     "ghatChakra",
   ];
+
+  // Determine sections to fetch
   const sectionsToFetch = sections.length > 0 ? sections : allSections;
 
-  try {
-    // Initialize response data
-    const kundliDetails = {
-      basicDetails: {},
-      astroDetails: {},
-      planetaryPositions: [],
-      lalkitab: {
-        horoscope: {},
-        debts: {},
-        houses: {},
-        planets: {},
-        remedies: {},
-      },
-      varshaphal: {},
-      kpSystem: {},
-      panchang: {},
-      ashtakvarga: { planetAshtak: {}, sarvashtak: {} },
-      dosha: { kalsarpa: {}, manglik: {}, sadhesati: {}, pitraDosha: {} },
-      remedies: { lalkitab: {} },
-      suggestions: { gem: {}, rudraksha: {} },
-      numero: {},
-      nakshatra: {},
-      dasha: { vimshottari: {}, char: {}, yogini: {} },
-      reports: {
-        ascendant: {},
-        house: {},
-        planet: {},
-        natalChartInterpretation: {},
-      },
-      charts: {},
-      ghatChakra: {},
-    };
+  // Initialize kundliDetails dynamically based on sectionsToFetch
+  // Initialize kundliDetails dynamically based on sectionsToFetch
+  const kundliDetails = {};
+  sectionsToFetch.forEach((section) => {
+    switch (section) {
+      case "basicDetails":
+        kundliDetails.basicDetails = {};
+        break;
+      case "astroDetails":
+        kundliDetails.astroDetails = {};
+        break;
+      case "planetaryPositions":
+        kundliDetails.planetaryPositions = [];
+        break;
+      case "lalkitab":
+        kundliDetails.lalkitab = {
+          horoscope: {},
+          debts: {},
+          houses: {},
+          planets: {},
+          remedies: {},
+        };
+        break;
+      case "varshaphal": // Corrected typo from "varshphala"
+        kundliDetails.varshaphal = {
+          details: {},
+          planets: {},
+          muntha: {},
+          muddaDasha: {},
+          panchavargeeya: {},
+          harshaBala: {},
+          sahamPoints: {},
+          yoga: {},
+          yearChart: {},
+          monthChart: {},
+        };
+        break;
+      case "kpSystem":
+        kundliDetails.kpSystem = {};
+        break;
+      case "panchang":
+        kundliDetails.panchang = {};
+        break;
+      case "ashtakvarga":
+        kundliDetails.ashtakvarga = { planetAshtak: {}, sarvashtak: {} };
+        break;
+      case "dosha":
+        kundliDetails.dosha = {
+          kalsarpa: {},
+          manglik: {},
+          sadhesati: {},
+          pitraDosha: {},
+        };
+        break;
+      case "remedies":
+        kundliDetails.remedies = { lalkitab: {} };
+        break;
+      case "suggestions":
+        kundliDetails.suggestions = { gem: {}, rudraksha: {} };
+        break;
+      case "numero":
+        kundliDetails.numero = {};
+        break;
+      case "nakshatra":
+        kundliDetails.nakshatra = {};
+        break;
+      case "dasha":
+        kundliDetails.dasha = { vimshottari: {}, char: {}, yogini: {} };
+        break;
+      case "reports":
+        kundliDetails.reports = {
+          ascendant: {},
+          house: {},
+          planet: {},
+          natalChartInterpretation: {},
+        };
+        break;
+      case "charts":
+        kundliDetails.charts = {};
+        break;
+      case "ghatChakra":
+        kundliDetails.ghatChakra = {};
+        break;
+      default:
+        break;
+    }
+  });
 
+  try {
     // Define API requests based on sections
     const requests = [];
 
@@ -889,9 +1807,9 @@ exports.getKundliDetails = catchAsync(async (req, res, next) => {
       });
       requests.push({
         name: "numero_prediction_daily",
-        method: "post", // Changed to POST for consistency
+        method: "post",
         url: `${ASTROLOGY_API_BASE_URL}/numero_prediction/daily`,
-        data: requestData, // Use data instead of params
+        data: requestData,
       });
     }
 
@@ -952,9 +1870,9 @@ exports.getKundliDetails = catchAsync(async (req, res, next) => {
         });
         requests.push({
           name: `horo_chart_image_${chartId.toLowerCase()}`,
-          method: "post", // Changed to POST per API documentation
+          method: "post",
           url: `${ASTROLOGY_API_BASE_URL}/horo_chart_image/${chartId}`,
-          data: requestData, // Use data instead of params
+          data: requestData,
         });
       });
     }
@@ -970,18 +1888,13 @@ exports.getKundliDetails = catchAsync(async (req, res, next) => {
 
     // Execute API requests
     const responses = await Promise.all(
-      requests.map(async ({ name, method, url, data, params }) => {
+      requests.map(async ({ name, method, url, data }) => {
         try {
           console.log(
-            `Sending ${method.toUpperCase()} request to ${url} with ${
-              method === "get" ? "params" : "data"
-            }:`,
-            JSON.stringify(method === "get" ? params : data, null, 2)
+            `Sending ${method.toUpperCase()} request to ${url} with data:`,
+            JSON.stringify(data, null, 2)
           );
-          const response =
-            method === "get"
-              ? await axios.get(url, { headers, params })
-              : await axios.post(url, data, { headers });
+          const response = await axios.post(url, data, { headers });
           console.log(`Success for ${name} (${url}):`, response.status);
           return { name, data: response.data };
         } catch (error) {
@@ -1012,143 +1925,207 @@ exports.getKundliDetails = catchAsync(async (req, res, next) => {
     // Map responses to kundliDetails
     responses.forEach(({ name, data }) => {
       if (!data) return; // Skip failed requests
-      if (name === "birth_details")
-        kundliDetails.basicDetails = { ...kundliDetails.basicDetails, ...data };
-      if (name === "ayanamsha")
-        kundliDetails.basicDetails.ayanamsha = data.ayanamsha || "Unknown";
-      if (name === "astro_details") kundliDetails.astroDetails = data;
-      if (name === "planets") {
-        kundliDetails.planetaryPositions = data.map((planet) => ({
-          name: planet.name,
-          sign: planet.sign,
-          degree: planet.fullDegree || "",
-          house: planet.house || "",
-          nakshatra: planet.nakshatra || "N/A",
-          nakshatraLord: planet.nakshatra_lord || "N/A",
-          isRetro: planet.isRetro || "false",
-        }));
+
+      if (sectionsToFetch.includes("basicDetails")) {
+        if (name === "birth_details")
+          kundliDetails.basicDetails = {
+            ...kundliDetails.basicDetails,
+            ...data,
+          };
+        if (name === "ayanamsha")
+          kundliDetails.basicDetails.ayanamsha = data.ayanamsha || "Unknown";
       }
-      if (name === "lalkitab_horoscope")
-        kundliDetails.lalkitab.horoscope = data;
-      if (name === "lalkitab_debts") kundliDetails.lalkitab.debts = data;
-      if (name === "lalkitab_houses") kundliDetails.lalkitab.houses = data;
-      if (name === "lalkitab_planets") kundliDetails.lalkitab.planets = data;
-      if (name.startsWith("lalkitab_remedies_")) {
-        const planet = name.replace("lalkitab_remedies_", "");
-        kundliDetails.lalkitab.remedies[planet] = data;
-        kundliDetails.remedies.lalkitab[planet] = data;
+
+      if (sectionsToFetch.includes("astroDetails")) {
+        if (name === "astro_details") kundliDetails.astroDetails = data;
       }
-      if (name === "varshaphal_details")
-        kundliDetails.varshaphal.details = data;
-      if (name === "varshaphal_planets")
-        kundliDetails.varshaphal.planets = data;
-      if (name === "varshaphal_muntha") kundliDetails.varshaphal.muntha = data;
-      if (name === "varshaphal_mudda_dasha")
-        kundliDetails.varshaphal.muddaDasha = data;
-      if (name === "varshaphal_panchavargeeya_bala")
-        kundliDetails.varshaphal.panchavargeeya = data;
-      if (name === "varshaphal_harsha_bala")
-        kundliDetails.varshaphal.harshaBala = data;
-      if (name === "varshaphal_saham_points")
-        kundliDetails.varshaphal.sahamPoints = data;
-      if (name === "varshaphal_yoga") kundliDetails.varshaphal.yoga = data;
-      if (name === "varshaphal_year_chart")
-        kundliDetails.varshaphal.yearChart = data;
-      if (name === "varshaphal_month_chart")
-        kundliDetails.varshaphal.monthChart = data;
-      if (name === "kp_planets") kundliDetails.kpSystem.planets = data;
-      if (name === "kp_house_cusps") kundliDetails.kpSystem.houseCusps = data;
-      if (name === "kp_birth_chart") kundliDetails.kpSystem.birthChart = data;
-      if (name === "kp_house_significator")
-        kundliDetails.kpSystem.houseSignificator = data;
-      if (name === "kp_planet_significator")
-        kundliDetails.kpSystem.planetSignificator = data;
-      if (name === "basic_panchang") kundliDetails.panchang.basic = data;
-      if (name === "advanced_panchang") kundliDetails.panchang.advanced = data;
-      if (name === "hora_muhurta") kundliDetails.panchang.horaMuhurta = data;
-      if (name === "chaughadiya_muhurta")
-        kundliDetails.panchang.chaughadiya = data;
-      if (name.startsWith("planet_ashtak_")) {
-        const planet = name.replace("planet_ashtak_", "");
-        kundliDetails.ashtakvarga.planetAshtak[planet] = data;
+
+      if (sectionsToFetch.includes("planetaryPositions")) {
+        if (name === "planets") {
+          kundliDetails.planetaryPositions = data.map((planet) => ({
+            name: planet.name,
+            sign: planet.sign,
+            degree: planet.fullDegree || "",
+            house: planet.house || "",
+            nakshatra: planet.nakshatra || "N/A",
+            nakshatraLord: planet.nakshatra_lord || "N/A",
+            isRetro: planet.isRetro || "false",
+          }));
+        }
       }
-      if (name === "sarvashtak") kundliDetails.ashtakvarga.sarvashtak = data;
-      if (name === "kalsarpa_details") kundliDetails.dosha.kalsarpa = data;
-      if (name === "manglik") kundliDetails.dosha.manglik = data;
-      if (name === "sadhesati_current_status")
-        kundliDetails.dosha.sadhesati.currentStatus = data;
-      if (name === "sadhesati_life_details")
-        kundliDetails.dosha.sadhesati.lifeDetails = data;
-      if (name === "pitra_dosha_report") kundliDetails.dosha.pitraDosha = data;
-      if (name === "basic_gem_suggestion") kundliDetails.suggestions.gem = data;
-      if (name === "rudraksha_suggestion")
-        kundliDetails.suggestions.rudraksha = data;
-      if (name === "numero_table") kundliDetails.numero.table = data;
-      if (name === "numero_report") kundliDetails.numero.report = data;
-      if (name === "numero_prediction_daily")
-        kundliDetails.numero.dailyPrediction = data;
-      if (name === "daily_nakshatra_prediction")
-        kundliDetails.nakshatra.dailyPrediction = data;
-      if (name === "current_vdasha")
-        kundliDetails.dasha.vimshottari = { current: data };
-      if (name === "current_chardasha")
-        kundliDetails.dasha.char = { current: data };
-      if (name === "current_yogini_dasha")
-        kundliDetails.dasha.yogini = { current: data };
-      if (name === "general_ascendant_report") {
-        kundliDetails.reports.ascendant = {
-          sign:
-            data.asc_report?.ascendant ||
-            kundliDetails.planetaryPositions?.find(
-              (p) => p.name === "Ascendant"
-            )?.sign ||
-            "Unknown",
-          characteristics: data.asc_report?.report || "No report available",
-        };
+
+      if (sectionsToFetch.includes("lalkitab")) {
+        if (name === "lalkitab_horoscope")
+          kundliDetails.lalkitab.horoscope = data;
+        if (name === "lalkitab_debts") kundliDetails.lalkitab.debts = data;
+        if (name === "lalkitab_houses") kundliDetails.lalkitab.houses = data;
+        if (name === "lalkitab_planets") kundliDetails.lalkitab.planets = data;
+        if (name.startsWith("lalkitab_remedies_")) {
+          const planet = name.replace("lalkitab_remedies_", "");
+          kundliDetails.lalkitab.remedies[planet] = data;
+        }
       }
-      if (name.startsWith("general_house_")) {
-        const planet = name.replace("general_house_", "");
-        kundliDetails.reports.house[planet] = data;
+
+      if (sectionsToFetch.includes("varshaphal")) {
+        if (name === "varshaphal_details")
+          kundliDetails.varshaphal.details = data;
+        if (name === "varshaphal_planets")
+          kundliDetails.varshaphal.planets = data;
+        if (name === "varshaphal_muntha")
+          kundliDetails.varshaphal.muntha = data;
+        if (name === "varshaphal_mudda_dasha")
+          kundliDetails.varshaphal.muddaDasha = data;
+        if (name === "varshaphal_panchavargeeya_bala")
+          kundliDetails.varshaphal.panchavargeeya = data;
+        if (name === "varshaphal_harsha_bala")
+          kundliDetails.varshaphal.harshaBala = data;
+        if (name === "varshaphal_saham_points")
+          kundliDetails.varshaphal.sahamPoints = data;
+        if (name === "varshaphal_yoga") kundliDetails.varshaphal.yoga = data;
+        if (name === "varshaphal_year_chart")
+          kundliDetails.varshaphal.yearChart = data;
+        if (name === "varshaphal_month_chart")
+          kundliDetails.varshaphal.monthChart = data;
       }
-      if (name.startsWith("horo_chart_")) {
-        const chartId = name.replace("horo_chart_", "").toUpperCase();
-        kundliDetails.charts[chartId.toLowerCase()] = data;
+
+      if (sectionsToFetch.includes("kpSystem")) {
+        if (name === "kp_planets") kundliDetails.kpSystem.planets = data;
+        if (name === "kp_house_cusps") kundliDetails.kpSystem.houseCusps = data;
+        if (name === "kp_birth_chart") kundliDetails.kpSystem.birthChart = data;
+        if (name === "kp_house_significator")
+          kundliDetails.kpSystem.houseSignificator = data;
+        if (name === "kp_planet_significator")
+          kundliDetails.kpSystem.planetSignificator = data;
       }
-      if (name.startsWith("horo_chart_image_")) {
-        const chartId = name.replace("horo_chart_image_", "").toUpperCase();
-        kundliDetails.charts[`${chartId.toLowerCase()}Image`] = data;
+
+      if (sectionsToFetch.includes("panchang")) {
+        if (name === "basic_panchang") kundliDetails.panchang.basic = data;
+        if (name === "advanced_panchang")
+          kundliDetails.panchang.advanced = data;
+        if (name === "hora_muhurta") kundliDetails.panchang.horaMuhurta = data;
+        if (name === "chaughadiya_muhurta")
+          kundliDetails.panchang.chaughadiya = data;
       }
-      if (name === "ghat_chakra") kundliDetails.ghatChakra = data;
+
+      if (sectionsToFetch.includes("ashtakvarga")) {
+        if (name.startsWith("planet_ashtak_")) {
+          const planet = name.replace("planet_ashtak_", "");
+          kundliDetails.ashtakvarga.planetAshtak[planet] = data;
+        }
+        if (name === "sarvashtak") kundliDetails.ashtakvarga.sarvashtak = data;
+      }
+
+      if (sectionsToFetch.includes("dosha")) {
+        if (name === "kalsarpa_details") kundliDetails.dosha.kalsarpa = data;
+        if (name === "manglik") kundliDetails.dosha.manglik = data;
+        if (name === "sadhesati_current_status")
+          kundliDetails.dosha.sadhesati.currentStatus = data;
+        if (name === "sadhesati_life_details")
+          kundliDetails.dosha.sadhesati.lifeDetails = data;
+        if (name === "pitra_dosha_report")
+          kundliDetails.dosha.pitraDosha = data;
+      }
+
+      if (sectionsToFetch.includes("remedies")) {
+        if (name.startsWith("lalkitab_remedies_")) {
+          const planet = name.replace("lalkitab_remedies_", "");
+          kundliDetails.remedies.lalkitab[planet] = data;
+        }
+      }
+
+      if (sectionsToFetch.includes("suggestions")) {
+        if (name === "basic_gem_suggestion")
+          kundliDetails.suggestions.gem = data;
+        if (name === "rudraksha_suggestion")
+          kundliDetails.suggestions.rudraksha = data;
+      }
+
+      if (sectionsToFetch.includes("numero")) {
+        if (name === "numero_table") kundliDetails.numero.table = data;
+        if (name === "numero_report") kundliDetails.numero.report = data;
+        if (name === "numero_prediction_daily")
+          kundliDetails.numero.dailyPrediction = data;
+      }
+
+      if (sectionsToFetch.includes("nakshatra")) {
+        if (name === "daily_nakshatra_prediction")
+          kundliDetails.nakshatra.dailyPrediction = data;
+      }
+
+      if (sectionsToFetch.includes("dasha")) {
+        if (name === "current_vdasha")
+          kundliDetails.dasha.vimshottari = { current: data };
+        if (name === "current_chardasha")
+          kundliDetails.dasha.char = { current: data };
+        if (name === "current_yogini_dasha")
+          kundliDetails.dasha.yogini = { current: data };
+      }
+
+      if (sectionsToFetch.includes("reports")) {
+        if (name === "general_ascendant_report") {
+          kundliDetails.reports.ascendant = {
+            sign:
+              data.asc_report?.ascendant ||
+              kundliDetails.planetaryPositions?.find(
+                (p) => p.name === "Ascendant"
+              )?.sign ||
+              "Unknown",
+            characteristics: data.asc_report?.report || "No report available",
+          };
+        }
+        if (name.startsWith("general_house_")) {
+          const planet = name.replace("general_house_", "");
+          kundliDetails.reports.house[planet] = data;
+        }
+      }
+
+      if (sectionsToFetch.includes("charts")) {
+        if (name.startsWith("horo_chart_")) {
+          const chartId = name.replace("horo_chart_", "").toUpperCase();
+          kundliDetails.charts[chartId.toLowerCase()] = data;
+        }
+        if (name.startsWith("horo_chart_image_")) {
+          const chartId = name.replace("horo_chart_image_", "").toUpperCase();
+          kundliDetails.charts[`${chartId.toLowerCase()}Image`] = data;
+        }
+      }
+
+      if (sectionsToFetch.includes("ghatChakra")) {
+        if (name === "ghat_chakra") kundliDetails.ghatChakra = data;
+      }
     });
 
-    // Finalize basicDetails
-    kundliDetails.basicDetails = {
-      name,
-      dob,
-      tob,
-      place,
-      latitude: lat,
-      longitude: lon,
-      timezone: tz,
-      gender: gender.toLowerCase(),
-      ascendant:
-        kundliDetails.basicDetails.ascendant ||
-        kundliDetails.planetaryPositions?.find((p) => p.name === "Ascendant")
-          ?.sign ||
-        "Unknown",
-      moonSign:
-        kundliDetails.basicDetails.moon_sign ||
-        kundliDetails.planetaryPositions?.find((p) => p.name === "Moon")
-          ?.sign ||
-        "Unknown",
-      sunSign:
-        kundliDetails.basicDetails.sun_sign ||
-        kundliDetails.planetaryPositions?.find((p) => p.name === "Sun")?.sign ||
-        "Unknown",
-      sunrise: kundliDetails.basicDetails.sunrise || "Unknown",
-      sunset: kundliDetails.basicDetails.sunset || "Unknown",
-      ayanamsha: kundliDetails.basicDetails.ayanamsha || "Unknown",
-    };
+    // Finalize basicDetails if included
+    if (sectionsToFetch.includes("basicDetails")) {
+      kundliDetails.basicDetails = {
+        name,
+        dob,
+        tob,
+        place,
+        latitude: lat,
+        longitude: lon,
+        timezone: tz,
+        gender: gender.toLowerCase(),
+        ascendant:
+          kundliDetails.basicDetails.ascendant ||
+          kundliDetails.planetaryPositions?.find((p) => p.name === "Ascendant")
+            ?.sign ||
+          "Unknown",
+        moonSign:
+          kundliDetails.basicDetails.moon_sign ||
+          kundliDetails.planetaryPositions?.find((p) => p.name === "Moon")
+            ?.sign ||
+          "Unknown",
+        sunSign:
+          kundliDetails.basicDetails.sun_sign ||
+          kundliDetails.planetaryPositions?.find((p) => p.name === "Sun")
+            ?.sign ||
+          "Unknown",
+        sunrise: kundliDetails.basicDetails.sunrise || "Unknown",
+        sunset: kundliDetails.basicDetails.sunset || "Unknown",
+        ayanamsha: kundliDetails.basicDetails.ayanamsha || "Unknown",
+      };
+    }
 
     // If there were failed requests, include a warning in the response
     if (failedResponses.length > 0) {
@@ -1793,6 +2770,353 @@ exports.matchKundli = catchAsync(async (req, res, next) => {
     return next(
       new AppError(
         `Failed to perform Kundli matching: ${error.message}`,
+        error.response?.status || 500
+      ),
+      { status: false }
+    );
+  }
+});
+
+exports.getPanchangDetails = catchAsync(async (req, res, next) => {
+  // Default to current date and time (June 30, 2025, 04:17 PM IST)
+  const now = new Date();
+  const defaultDate = now.toISOString().split("T")[0]; // YYYY-MM-DD (2025-06-30)
+  const defaultHour = now.getHours(); // 16 (04:17 PM IST)
+  const defaultMin = now.getMinutes(); // 17
+
+  const {
+    date = defaultDate, // Default to current date
+    hour = defaultHour, // Default to current hour
+    min = defaultMin, // Default to current minute
+    latitude = 25.7464, // Default to Jaunpur, UP (from documentation)
+    longitude = 82.6837, // Default to Jaunpur, UP
+    timezone = 5.5, // Default to IST
+    language = "en", // Default to English
+  } = req.body;
+
+  console.log(req.body, "body");
+
+  // Validate date format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(date)) {
+    return next(new AppError("Invalid date format. Use YYYY-MM-DD", 400), {
+      status: false,
+    });
+  }
+
+  // Validate hour (0-23)
+  const parsedHour = parseInt(hour);
+  if (isNaN(parsedHour) || parsedHour < 0 || parsedHour > 23) {
+    return next(new AppError("Invalid hour. Must be between 0 and 23", 400), {
+      status: false,
+    });
+  }
+
+  // Validate minute (0-59)
+  const parsedMin = parseInt(min);
+  if (isNaN(parsedMin) || parsedMin < 0 || parsedMin > 59) {
+    return next(new AppError("Invalid minute. Must be between 0 and 59", 400), {
+      status: false,
+    });
+  }
+
+  // Validate latitude if provided
+  if (latitude !== undefined) {
+    const lat = parseFloat(latitude);
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      return next(
+        new AppError("Invalid latitude. Must be between -90 and 90", 400),
+        { status: false }
+      );
+    }
+  }
+
+  // Validate longitude if provided
+  if (longitude !== undefined) {
+    const lon = parseFloat(longitude);
+    if (isNaN(lon) || lon < -180 || lon > 180) {
+      return next(
+        new AppError("Invalid longitude. Must be between -180 and 180", 400),
+        { status: false }
+      );
+    }
+  }
+
+  // Validate timezone if provided
+  if (timezone !== undefined) {
+    const tz = parseFloat(timezone);
+    if (isNaN(tz) || tz < -12 || tz > 14) {
+      return next(
+        new AppError("Invalid timezone. Must be between -12 and 14", 400),
+        { status: false }
+      );
+    }
+  }
+
+  // Validate language
+  const validLanguages = ["en", "hi"];
+  if (!validLanguages.includes(language.toLowerCase())) {
+    return next(new AppError("Invalid language. Use en or hi", 400), {
+      status: false,
+    });
+  }
+
+  // Extract date components
+  const [year, month, day] = date.split("-").map(Number);
+  if (
+    !Number.isInteger(day) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(year) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return next(
+      new AppError("Invalid date components. Ensure YYYY-MM-DD format.", 400),
+      { status: false }
+    );
+  }
+
+  // Prepare API request data
+  const requestData = {
+    day,
+    month,
+    year,
+    hour: parsedHour,
+    min: parsedMin,
+    lat: parseFloat(latitude),
+    lon: parseFloat(longitude),
+    tzone: parseFloat(timezone),
+    language: language.toLowerCase(),
+  };
+
+  // Validate requestData
+  if (
+    isNaN(requestData.day) ||
+    isNaN(requestData.month) ||
+    isNaN(requestData.year) ||
+    isNaN(requestData.hour) ||
+    isNaN(requestData.min) ||
+    isNaN(requestData.lat) ||
+    isNaN(requestData.lon) ||
+    isNaN(requestData.tzone)
+  ) {
+    return next(
+      new AppError(
+        "Invalid request data: day, month, year, hour, min, lat, lon, or tzone is not a number",
+        400
+      ),
+      { status: false }
+    );
+  }
+
+  // Prepare authorization header
+  const authString = Buffer.from(
+    `${process.env.ASTROLOGY_API_USER_ID}:${process.env.ASTROLOGY_API_KEY}`
+  ).toString("base64");
+  const headers = {
+    Authorization: `Basic ${authString}`,
+    "Content-Type": "application/json",
+  };
+
+  // Initialize panchangDetails for advancedPanchang
+  const panchangDetails = {
+    advancedPanchang: {},
+  };
+
+  console.log(
+    "Initialized panchangDetails:",
+    JSON.stringify(panchangDetails, null, 2)
+  );
+
+  try {
+    // Define API request for advanced_panchang
+    const request = {
+      name: "advanced_panchang",
+      method: "post",
+      url: `${ASTROLOGY_API_BASE_URL}/advanced_panchang`,
+      data: requestData,
+    };
+
+    // Execute API request
+    console.log(
+      `Sending ${request.method.toUpperCase()} request to ${
+        request.url
+      } with data:`,
+      JSON.stringify(request.data, null, 2)
+    );
+    const response = await axios.post(request.url, request.data, { headers });
+    console.log(
+      `Success for ${request.name} (${request.url}):`,
+      response.status
+    );
+
+    // Map response to panchangDetails
+    const data = response.data;
+    panchangDetails.advancedPanchang = {
+      day: data.day || "Unknown",
+      tithi: data.tithi
+        ? {
+            details: {
+              tithi_number: data.tithi.details?.tithi_number || "Unknown",
+              tithi_name: data.tithi.details?.tithi_name || "Unknown",
+              special: data.tithi.details?.special || "Unknown",
+              summary: data.tithi.details?.summary || "Unknown",
+              deity: data.tithi.details?.deity || "Unknown",
+            },
+            end_time: {
+              hour: data.tithi.end_time?.hour || "Unknown",
+              minute: data.tithi.end_time?.minute || "Unknown",
+              second: data.tithi.end_time?.second || "Unknown",
+            },
+            end_time_ms: data.tithi.end_time_ms || "Unknown",
+          }
+        : "Unknown",
+      nakshatra: data.nakshatra
+        ? {
+            details: {
+              nak_number: data.nakshatra.details?.nak_number || "Unknown",
+              nak_name: data.nakshatra.details?.nak_name || "Unknown",
+              ruler: data.nakshatra.details?.ruler || "Unknown",
+              deity: data.nakshatra.details?.deity || "Unknown",
+              special: data.nakshatra.details?.special || "Unknown",
+              summary: data.nakshatra.details?.summary || "Unknown",
+            },
+            end_time: {
+              hour: data.nakshatra.end_time?.hour || "Unknown",
+              minute: data.nakshatra.end_time?.minute || "Unknown",
+              second: data.nakshatra.end_time?.second || "Unknown",
+            },
+            end_time_ms: data.nakshatra.end_time_ms || "Unknown",
+          }
+        : "Unknown",
+      karana: data.karan
+        ? {
+            details: {
+              karan_number: data.karan.details?.karan_number || "Unknown",
+              karan_name: data.karan.details?.karan_name || "Unknown",
+              special: data.karan.details?.special || "Unknown",
+              deity: data.karan.details?.deity || "Unknown",
+            },
+            end_time: {
+              hour: data.karan.end_time?.hour || "Unknown",
+              minute: data.karan.end_time?.minute || "Unknown",
+              second: data.karan.end_time?.second || "Unknown",
+            },
+            end_time_ms: data.karan.end_time_ms || "Unknown",
+          }
+        : "Unknown",
+      yoga: data.yog
+        ? {
+            details: {
+              yog_number: data.yog.details?.yog_number || "Unknown",
+              yog_name: data.yog.details?.yog_name || "Unknown",
+              special: data.yog.details?.special || "Unknown",
+              meaning: data.yog.details?.meaning || "Unknown",
+            },
+            end_time: {
+              hour: data.yog.end_time?.hour || "Unknown",
+              minute: data.yog.end_time?.minute || "Unknown",
+              second: data.yog.end_time?.second || "Unknown",
+            },
+            end_time_ms: data.yog.end_time_ms || "Unknown",
+          }
+        : "Unknown",
+      sunrise: data.sunrise || "Unknown",
+      sunset: data.sunset || "Unknown",
+      moonrise: data.moonrise || "Unknown",
+      moonset: data.moonset || "Unknown",
+      vedic_sunrise: data.vedic_sunrise || "Unknown",
+      vedic_sunset: data.vedic_sunset || "Unknown",
+      hindu_maah: data.hindu_maah
+        ? {
+            adhik_status: data.hindu_maah.adhik_status || false,
+            purnimanta: data.hindu_maah.purnimanta || "Unknown",
+            amanta: data.hindu_maah.amanta || "Unknown",
+            amanta_id: data.hindu_maah.amanta_id || "Unknown",
+            purnimanta_id: data.hindu_maah.purnimanta_id || "Unknown",
+          }
+        : "Unknown",
+      paksha: data.paksha || "Unknown",
+      ayana: data.ayana || "Unknown",
+      ritu: data.ritu || "Unknown",
+      sun_sign: data.sun_sign || "Unknown",
+      moon_sign: data.moon_sign || "Unknown",
+      panchang_yog: data.panchang_yog || "Unknown",
+      vikram_samvat: data.vikram_samvat || "Unknown",
+      shaka_samvat: data.shaka_samvat || "Unknown",
+      vikram_samvat_name: data.vkram_samvat_name || "Unknown",
+      shaka_samvat_name: data.shaka_samvat_name || "Unknown",
+      disha_shool: data.disha_shool || "Unknown",
+      disha_shool_remedies: data.disha_shool_remedies || "Unknown",
+      nak_shool: data.nak_shool
+        ? {
+            direction: data.nak_shool.direction || "Unknown",
+            remedies: data.nak_shool.remedies || "Unknown",
+          }
+        : "Unknown",
+      moon_nivas: data.moon_nivas || "Unknown",
+      abhijit_muhurta: data.abhijit_muhurta
+        ? {
+            start: data.abhijit_muhurta.start || "Unknown",
+            end: data.abhijit_muhurta.end || "Unknown",
+          }
+        : "Unknown",
+      rahukaal: data.rahukaal
+        ? {
+            start: data.rahukaal.start || "Unknown",
+            end: data.rahukaal.end || "Unknown",
+          }
+        : "Unknown",
+      guliKaal: data.guliKaal
+        ? {
+            start: data.guliKaal.start || "Unknown",
+            end: data.guliKaal.end || "Unknown",
+          }
+        : "Unknown",
+      yamghant_kaal: data.yamghant_kaal
+        ? {
+            start: data.yamghant_kaal.start || "Unknown",
+            end: data.yamghant_kaal.end || "Unknown",
+          }
+        : "Unknown",
+      planets: data.planets
+        ? data.planets.map((planet) => ({
+            name: planet.name || "Unknown",
+            nakshatra: planet.nakshatra || "N/A",
+            nakshatra_lord: planet.nakshatra_lord || "N/A",
+            sign: planet.sign || "N/A",
+            degree: planet.fullDegree || "",
+            house: planet.house || "",
+            isRetro: planet.isRetro || "false",
+          }))
+        : [
+            {
+              name: "Unknown",
+              nakshatra: "N/A",
+              nakshatra_lord: "N/A",
+              sign: "N/A",
+              degree: "",
+              house: "",
+              isRetro: "false",
+            },
+          ],
+    };
+
+    // Return successful response
+    res.status(200).json({
+      status: true,
+      message: "Advanced Panchang details fetched successfully",
+      data: panchangDetails,
+    });
+  } catch (error) {
+    console.error("AstrologyAPI error:", error.message, error.stack);
+    return next(
+      new AppError(
+        `Failed to fetch Advanced Panchang details: ${
+          error.response?.data?.msg || error.message
+        }`,
         error.response?.status || 500
       ),
       { status: false }

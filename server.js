@@ -20,7 +20,12 @@ const {
   generateTransactionInvoice,
 } = require("./src/controllers/invoice/invoice");
 const { RtcTokenBuilder, RtcRole } = require("agora-access-token");
-const { chatNotificaion } = require("./src/controllers/firebaseNotification/chatNotification");
+const {
+  chatNotificaion,
+} = require("./src/controllers/firebaseNotification/chatNotification");
+const {
+  statusNotification,
+} = require("./src/controllers/firebaseNotification/statusNotification");
 
 dotenv.config({ path: "config.env" });
 
@@ -176,7 +181,62 @@ io.on("connection", (socket) => {
     }
   });
   //chat code starte here
-  socket.on("sendChatRequest", async ({ userId, astrologerId }) => {
+  // socket.on("sendChatRequest", async ({ userId, astrologerId, memberData }) => {
+  //   try {
+  //     if (!userId || !astrologerId) {
+  //       throw new AppError("User ID and Astrologer ID are required", 400);
+  //     }
+
+  //     const astrologer = await Astrologer.findById(astrologerId);
+  //     if (!astrologer) {
+  //       throw new AppError("Astrologer not found", 404);
+  //     }
+  //     if (astrologer.isBusy || astrologer.status === "offline") {
+  //       throw new AppError("Astrologer is busy or offline", 400);
+  //     }
+
+  //     const user = await User.findById(userId);
+  //     if (!user) {
+  //       throw new AppError("User not found", 404);
+  //     }
+
+  //     const chatPrice = astrologer.pricing.chat;
+  //     if (user.wallet.balance < chatPrice) {
+  //       throw new AppError(
+  //         `Insufficient balance. Please recharge your wallet. Minimum required: ${chatPrice}`,
+  //         400
+  //       );
+  //     }
+
+  //     const chatRequest = await ChatRequest.create({
+  //       user: userId,
+  //       astrologer: astrologerId,
+  //       status: "pending",
+  //       memberData: memberData ? memberData : [],
+  //     });
+
+  //     if (astrologers[astrologerId]?.socketId) {
+  //       io.to(astrologers[astrologerId].socketId).emit("chatRequestReceived", {
+  //         chatRequestId: chatRequest._id,
+  //         userId,
+  //         userName: user.name || "Unknown",
+  //         createdAt: chatRequest.createdAt,
+  //       });
+  //     }
+
+  //     socket.emit("chatRequestSent", {
+  //       chatRequestId: chatRequest._id,
+  //       astrologerId,
+  //       status: "pending",
+  //     });
+  //   } catch (error) {
+  //     socket.emit("error", {
+  //       status: false,
+  //       message: `Failed to send chat request: ${error.message}`,
+  //     });
+  //   }
+  // });
+  socket.on("sendChatRequest", async ({ userId, astrologerId, memberData }) => {
     try {
       if (!userId || !astrologerId) {
         throw new AppError("User ID and Astrologer ID are required", 400);
@@ -207,8 +267,10 @@ io.on("connection", (socket) => {
         user: userId,
         astrologer: astrologerId,
         status: "pending",
+        memberData: memberData ? memberData : [],
       });
 
+      // Send chat request notification to astrologer
       if (astrologers[astrologerId]?.socketId) {
         io.to(astrologers[astrologerId].socketId).emit("chatRequestReceived", {
           chatRequestId: chatRequest._id,
@@ -216,6 +278,33 @@ io.on("connection", (socket) => {
           userName: user.name || "Unknown",
           createdAt: chatRequest.createdAt,
         });
+      }
+
+      // Send status notification to user
+      if (user.fcmToken) {
+        await statusNotification(
+          user.fcmToken,
+          "Astrologer Status",
+          `Astrologer ${astrologer.name || "Unknown"} is ${astrologer.status}.`,
+          {
+            astrologerId: astrologerId.toString(),
+            status: astrologer.status,
+          }
+        );
+      }
+
+      // Send chat request notification to astrologer via Firebase
+      if (astrologer.fcmToken) {
+        await chatNotificaion(
+          astrologer.fcmToken,
+          "New Chat Request",
+          `You have a new chat request from ${user.name || "Unknown"}`,
+          {
+            chatRequestId: chatRequest._id.toString(),
+            userId: userId.toString(),
+            userName: user.name || "Unknown",
+          }
+        );
       }
 
       socket.emit("chatRequestSent", {
@@ -230,7 +319,6 @@ io.on("connection", (socket) => {
       });
     }
   });
-
   socket.on(
     "respondChatRequest",
     async ({ chatRequestId, astrologerId, action }) => {
@@ -267,6 +355,9 @@ io.on("connection", (socket) => {
 
         if (action === "accept") {
           const user = await User.findById(chatRequest.user._id);
+          const maxWaitingTime = Math.ceil(
+            user.wallet.balance / astrologer.pricing.chat
+          );
           const chatPrice = astrologer.pricing.chat;
 
           user.wallet.balance -= chatPrice;
@@ -287,7 +378,50 @@ io.on("connection", (socket) => {
             chatRequest: chatRequestId,
             status: "active",
             startedAt: new Date(),
+            type: chatRequest.type, // Use type from ChatRequest
           });
+
+          // Send automatic message with memberData
+          if (chatRequest.memberData && chatRequest.memberData.length > 0) {
+            const memberDataText = chatRequest.memberData
+              .map((member) => {
+                const fields = [
+                  `Name: ${member.name}`,
+                  `Gender: ${member.gender}`,
+                  member.dob ? `Date of Birth: ${member.dob}` : null,
+                  member.birthTime ? `Birth Time: ${member.birthTime}` : null,
+                  member.placeOfBirth
+                    ? `Place of Birth: ${member.placeOfBirth}`
+                    : null,
+                ].filter((field) => field !== null); // Remove null fields
+                return fields.join("\n");
+              })
+              .join("\n\n"); // Separate multiple members with double newline
+
+            const messageData = await sendMessage(
+              chatRequest.user._id,
+              astrologerId,
+              memberDataText,
+              "User",
+              "Astrologer",
+              chatSession._id
+            );
+            // Emit message to astrologer
+            if (astrologers[astrologerId]?.socketId) {
+              io.to(astrologers[astrologerId].socketId).emit(
+                "newMessage",
+                messageData
+              );
+            }
+
+            // Emit message to user
+            if (users[chatRequest.user._id]?.socketId) {
+              io.to(users[chatRequest.user._id].socketId).emit(
+                "newMessage",
+                messageData
+              );
+            }
+          }
 
           const timer = setInterval(async () => {
             try {
@@ -322,8 +456,8 @@ io.on("connection", (socket) => {
                     astrologer.name
                   } for ${duration} minute${duration > 1 ? "s" : ""}`,
                   status: "success",
-                  type: "chat",
-                  duration: `${duration} minute${duration > 1 ? "s" : ""}`,
+                  type: chatRequest.type, // Use type from ChatRequest
+                  duration: `${duration}`,
                 });
                 await generateTransactionInvoice(transaction._id);
                 const totalLocked = currentUser.wallet.lockedBalance;
@@ -399,6 +533,7 @@ io.on("connection", (socket) => {
           chatTimers[chatSession._id.toString()] = timer;
 
           astrologer.isBusy = true;
+          astrologer.maxWaitingTime = maxWaitingTime;
           await astrologer.save();
 
           if (users[chatRequest.user._id]?.socketId) {
@@ -447,72 +582,6 @@ io.on("connection", (socket) => {
     }
   );
 
-//   socket.on(
-//   "sendMessage",
-//   async ({ chatSessionId, senderId, senderType, messageText }) => {
-//     try {
-//       const chatSession = await ChatSession.findById(chatSessionId).populate(
-//         "user astrologer"
-//       );
-//       if (!chatSession || chatSession.status !== "active") {
-//         throw new AppError("Invalid or inactive chat session", 400);
-//       }
-
-//       const recipientId =
-//         senderType === "User"
-//           ? chatSession.astrologer._id
-//           : chatSession.user._id;
-//       const recipientType = senderType === "User" ? "Astrologer" : "User";
-
-//       const messageData = await sendMessage(
-//         senderId,
-//         recipientId,
-//         messageText,
-//         senderType,
-//         recipientType,
-//         chatSessionId
-//       );
-
-//       const recipientSocket =
-//         recipientType === "User"
-//           ? users[recipientId]?.socketId
-//           : astrologers[recipientId]?.socketId;
-
-//       if (recipientSocket) {
-//         io.to(recipientSocket).emit("newMessage", messageData);
-//       } else {
-//         // Recipient is offline, send push notification
-//         const recipientModel = recipientType === "User" ? User : Astrologer;
-//         const recipient = await recipientModel.findById(recipientId);
-//         const sender = await (senderType === "User" ? User : Astrologer).findById(senderId);
-        
-//         if (recipient && recipient.fcmToken) {
-//           await chatNotificaion(
-//             recipient.fcmToken,
-//             `New Message from ${sender.name || "Unknown"}`,
-//             messageText,
-//             {
-//               chatSessionId: chatSessionId.toString(),
-//               senderId: senderId.toString(),
-//               senderType,
-//               recipientId: recipientId.toString(),
-//               recipientType,
-//               senderProfileImage: sender.profileImage || "", // Include sender's profile image
-//               recipientProfileImage: recipient.profileImage || "", // Include recipient's profile image
-//             }
-//           );
-//         }
-//       }
-
-//       socket.emit("messageSent", messageData);
-//     } catch (error) {
-//       socket.emit("messageError", {
-//         message: `Failed to send message: ${error.message}`,
-//       });
-//     }
-//   }
-// );
-
   socket.on(
     "sendMessage",
     async ({ chatSessionId, senderId, senderType, messageText }) => {
@@ -530,11 +599,6 @@ io.on("connection", (socket) => {
             : chatSession.user._id;
         const recipientType = senderType === "User" ? "Astrologer" : "User";
 
-        console.log(
-          "senderTypeJ+++++++++++++++++++++++++++++++++++++++ thi",
-          senderType
-        );
-
         const messageData = await sendMessage(
           senderId,
           recipientId,
@@ -548,8 +612,59 @@ io.on("connection", (socket) => {
           recipientType === "User"
             ? users[recipientId]?.socketId
             : astrologers[recipientId]?.socketId;
+
         if (recipientSocket) {
           io.to(recipientSocket).emit("newMessage", messageData);
+          //test condition
+          // Recipient is offline, send push notification
+          const recipientModel = recipientType === "User" ? User : Astrologer;
+          const recipient = await recipientModel.findById(recipientId);
+          const sender = await (senderType === "User"
+            ? User
+            : Astrologer
+          ).findById(senderId);
+
+          if (recipient && recipient.fcmToken) {
+            await chatNotificaion(
+              recipient.fcmToken,
+              `New Message from ${sender.name || "Unknown"}`,
+              messageText,
+              {
+                chatSessionId: chatSessionId.toString(),
+                senderId: senderId.toString(),
+                senderType,
+                recipientId: recipientId.toString(),
+                recipientType,
+                senderProfileImage: sender.profileImage || "", // Include sender's profile image
+                recipientProfileImage: recipient.profileImage || "", // Include recipient's profile image
+              }
+            );
+          }
+        } else {
+          // Recipient is offline, send push notification
+          const recipientModel = recipientType === "User" ? User : Astrologer;
+          const recipient = await recipientModel.findById(recipientId);
+          const sender = await (senderType === "User"
+            ? User
+            : Astrologer
+          ).findById(senderId);
+
+          if (recipient && recipient.fcmToken) {
+            await chatNotificaion(
+              recipient.fcmToken,
+              `New Message from ${sender.name || "Unknown"}`,
+              messageText,
+              {
+                chatSessionId: chatSessionId.toString(),
+                senderId: senderId.toString(),
+                senderType,
+                recipientId: recipientId.toString(),
+                recipientType,
+                senderProfileImage: sender.profileImage || "", // Include sender's profile image
+                recipientProfileImage: recipient.profileImage || "", // Include recipient's profile image
+              }
+            );
+          }
         }
 
         socket.emit("messageSent", messageData);
@@ -1176,7 +1291,11 @@ io.on("connection", (socket) => {
       if (!user) {
         throw new AppError("User not found", 404);
       }
-     console.log(user.wallet.balance,astrologer.pricing.voice,"++++++++++++++++++++++++++++++++++++++++++++")
+      console.log(
+        user.wallet.balance,
+        astrologer.pricing.voice,
+        "++++++++++++++++++++++++++++++++++++++++++++"
+      );
       const voicePrice = astrologer.pricing.voice;
       if (user.wallet.balance < voicePrice) {
         throw new AppError(
@@ -1558,13 +1677,8 @@ io.on("connection", (socket) => {
       }
       for (const [id, astrologer] of Object.entries(astrologers)) {
         if (astrologer.socketId === socket.id) {
-          await Astrologer.findByIdAndUpdate(id, { status: "offline" });
-          socket.broadcast.emit("astrologerStatus", {
-            astrologerId: id,
-            status: "offline",
-            isBusy: false,
-          });
           delete astrologers[id];
+          // Do not update status to offline in the database
           break;
         }
       }
@@ -1572,6 +1686,36 @@ io.on("connection", (socket) => {
       console.error("Disconnect event error:", error.message);
     }
   });
+
+  // socket.on("disconnect", async () => {
+  //   console.log("Client disconnected:", socket.id);
+  //   try {
+  //     for (const [id, user] of Object.entries(users)) {
+  //       if (user.socketId === socket.id) {
+  //         delete users[id];
+  //         socket.broadcast.emit("userStatus", {
+  //           userId: id,
+  //           status: "offline",
+  //         });
+  //         break;
+  //       }
+  //     }
+  //     for (const [id, astrologer] of Object.entries(astrologers)) {
+  //       if (astrologer.socketId === socket.id) {
+  //         await Astrologer.findByIdAndUpdate(id, { status: "offline" });
+  //         socket.broadcast.emit("astrologerStatus", {
+  //           astrologerId: id,
+  //           status: "offline",
+  //           isBusy: false,
+  //         });
+  //         delete astrologers[id];
+  //         break;
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Disconnect event error:", error.message);
+  //   }
+  // });
 
   socket.on("error", (err) => {
     console.error("Socket error:", err);

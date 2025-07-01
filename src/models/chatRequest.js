@@ -9,12 +9,29 @@ const chatRequestSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "accept", "reject","notRespond"],
+    enum: ["pending", "accept", "reject", "notRespond"],
     default: "pending",
   },
+  memberData: [
+    {
+      name: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      gender: {
+        type: String,
+        enum: ["male", "female", "other"],
+        required: true,
+      },
+      dob: String,
+      birthTime: String,
+      placeOfBirth: String,
+    },
+  ],
   type: {
     type: String,
-    enum: ["chat", "video","voice"],
+    enum: ["chat", "video", "voice"],
     default: "chat",
   },
   createdAt: { type: Date, default: Date.now },

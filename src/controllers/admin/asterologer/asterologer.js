@@ -152,7 +152,12 @@ exports.createAstrologer = catchAsync(async (req, res, next) => {
 });
 
 exports.getAllAstrologers = catchAsync(async (req, res) => {
-  const { search, page: currentPage, limit: currentLimit } = req.query;
+  const {
+    search,
+    page: currentPage,
+    limit: currentLimit,
+    isVerify,
+  } = req.query;
 
   let query = {};
 
@@ -163,7 +168,7 @@ exports.getAllAstrologers = catchAsync(async (req, res) => {
       { mobile: { $regex: search, $options: "i" } },
     ];
   }
-
+  if (isVerify !== undefined) query.isVerify = isVerify;
   const { limit, skip, totalResult, totalPage } = await pagination(
     currentPage,
     currentLimit,
@@ -171,6 +176,8 @@ exports.getAllAstrologers = catchAsync(async (req, res) => {
     null,
     query
   );
+
+
 
   const astrologers = await Astrologer.find(query)
     .populate("speciality")
@@ -346,9 +353,9 @@ exports.updateAstrologer = catchAsync(async (req, res, next) => {
       }
     }
 
-      if (!astrologer.referralCode) {
-          astrologerData.referralCode = generateReferralCode(name);
-        }
+    if (!astrologer.referralCode) {
+      astrologerData.referralCode = await generateReferralCode(name);
+    }
 
     const updatedAstrologer = await Astrologer.findByIdAndUpdate(
       req.params.id,

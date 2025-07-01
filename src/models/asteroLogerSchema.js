@@ -118,6 +118,10 @@ const astrologerSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  maxWaitingTime: {
+    type: String,
+    defautl: "",
+  },
   referralCode: { type: String }, //it must be unique
   referralCommission: { type: Number, default: 0 }, //value calculate in percentage
   isVerify: {

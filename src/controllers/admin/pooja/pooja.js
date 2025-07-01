@@ -296,7 +296,7 @@ exports.deleteAssignAstrologer = catchAsync(async (req, res, next) => {
 });
 
 exports.getAstrologersByPooja = catchAsync(async (req, res, next) => {
-  const poojaId = req.params.poojaId;
+  const poojaId = req.params.id;
 
   // Validate pooja
   const pooja = await Pooja.findById(poojaId);

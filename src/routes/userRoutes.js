@@ -61,6 +61,7 @@ const {
   createPoojaTransaction,
   getAllPoojaTransactions,
   getPoojaTransaction,
+  poojaTransactionWebhook,
 } = require("../controllers/user/poojaTransaction/poojaTransaction");
 const {
   getDailyHoroscope,
@@ -69,10 +70,21 @@ const {
   getTomorrowHoroscope,
   getYesterdayHoroscope,
   getMonthlyHoroscope,
+  getPanchangDetails,
 } = require("../controllers/user/horoscope/horoscope");
 const { getAllPoojas, getPooja } = require("../controllers/user/pooja/pooja");
-const { getCompatibility } = require("../controllers/user/compatibility/compatibility");
+const {
+  getCompatibility,
+} = require("../controllers/user/compatibility/compatibility");
 const { getAstrologersByPooja } = require("../controllers/admin/pooja/pooja");
+const {
+  createRequestMember,
+  getAllRequestMembers,
+  getRequestMember,
+  updateRequestMember,
+  deleteRequestMember,
+} = require("../controllers/user/requestMember/requestMember");
+const { notifyAstrologer } = require("../controllers/user/notify/notify");
 
 const router = express.Router();
 
@@ -170,7 +182,7 @@ router
 router.post(
   "/poojaTransactionWebhook",
   bodyParser.raw({ type: "application/json" }),
-  transactionWebhook
+  poojaTransactionWebhook
 );
 
 //horoscope
@@ -180,6 +192,7 @@ router.post("/yesterdayHoroscope", getYesterdayHoroscope);
 router.post("/monthlyHoroscope", getMonthlyHoroscope);
 router.post("/kundli", getKundliDetails);
 router.post("/matchKundli", matchKundli);
+router.post("/panchang", getPanchangDetails);
 
 //pooja
 router.route("/pooja").get(getAllPoojas);
@@ -187,6 +200,21 @@ router.route("/pooja/:id").get(getPooja);
 router.get("/poojaAstrologer/:id", getAstrologersByPooja);
 
 //compatibility
-router.get("/compatibility/:id", getCompatibility);
+router.post("/compatibility", getCompatibility);
+
+//request member
+router
+  .route("/requestMember")
+  .post(userAuthenticate, createRequestMember)
+  .get(userAuthenticate, getAllRequestMembers);
+
+router
+  .route("/requestMember/:id")
+  .get(userAuthenticate, getRequestMember)
+  .patch(userAuthenticate, updateRequestMember)
+  .delete(userAuthenticate, deleteRequestMember);
+
+// Notify
+router.post("/notifyAstrologer", userAuthenticate, notifyAstrologer);
 
 module.exports = router;
