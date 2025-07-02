@@ -280,23 +280,12 @@ io.on("connection", (socket) => {
         });
       }
 
-      // Send status notification to user
-      if (user.fcmToken) {
-        await statusNotification(
-          user.fcmToken,
-          "Astrologer Status",
-          `Astrologer ${astrologer.name || "Unknown"} is ${astrologer.status}.`,
-          {
-            astrologerId: astrologerId.toString(),
-            status: astrologer.status,
-          }
-        );
-      }
+      console.log("Chat request created:", astrologer);
 
       // Send chat request notification to astrologer via Firebase
       if (astrologer.fcmToken) {
         await chatNotificaion(
-          astrologer.fcmToken,
+          "fiSbcW_PQ7qMPZH6cN4ZwJ:APA91bEc908FyN4GSIyUtFgGjVTcBp65cbkG-TLQ9kFn6FKwtzSquKQKzEVI8kRYf0S9VVaAXqaOLFReiYyW5SMCWQfuc6pPipTeEMDSWlAv9rshNZeEPgc",//astrologer.fcmToken,
           "New Chat Request",
           `You have a new chat request from ${user.name || "Unknown"}`,
           {
@@ -615,31 +604,6 @@ io.on("connection", (socket) => {
 
         if (recipientSocket) {
           io.to(recipientSocket).emit("newMessage", messageData);
-          //test condition
-          // Recipient is offline, send push notification
-          const recipientModel = recipientType === "User" ? User : Astrologer;
-          const recipient = await recipientModel.findById(recipientId);
-          const sender = await (senderType === "User"
-            ? User
-            : Astrologer
-          ).findById(senderId);
-
-          if (recipient && recipient.fcmToken) {
-            await chatNotificaion(
-              recipient.fcmToken,
-              `New Message from ${sender.name || "Unknown"}`,
-              messageText,
-              {
-                chatSessionId: chatSessionId.toString(),
-                senderId: senderId.toString(),
-                senderType,
-                recipientId: recipientId.toString(),
-                recipientType,
-                senderProfileImage: sender.profileImage || "", // Include sender's profile image
-                recipientProfileImage: recipient.profileImage || "", // Include recipient's profile image
-              }
-            );
-          }
         } else {
           // Recipient is offline, send push notification
           const recipientModel = recipientType === "User" ? User : Astrologer;

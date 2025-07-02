@@ -2,6 +2,8 @@ const admin = require("../../firebase/firebase");
 const AppError = require("../../utils/AppError");
 
 async function chatNotificaion(token, title, body, data = {}) {
+  console.log(data,"dadaa in chatNotificaion");
+  console.log(body,"body in chatNotificaion");
   try {
     const message = {
       notification: {
